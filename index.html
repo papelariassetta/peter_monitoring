@@ -67,7 +67,7 @@ function toast(m){var t=document.getElementById('toast');t.textContent=m;t.class
 function fmt(t){return t?new Date(t).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):''}
 function fmtQ(q){q=+q;return '<span class="'+(q<0?'bad':'okc')+'">'+(q<0?'−':'+')+Math.abs(q)+' un.</span>'}
 function btns(){return isSeparador()?BTN.slice(0,3):BTN}
-function tabs(){if(isSeparador())return['separacao','conferido','aguardando'];var t=['separacao','conferido','aguardando','conferencia'];if(isAdmin())t.push('correcao');t.push('finalizado');return t}
+function tabs(){if(isEntregador())return['aguardando'];if(isSeparador())return['separacao','conferido','aguardando'];var t=['separacao','conferido','aguardando','conferencia'];if(isAdmin())t.push('correcao');t.push('finalizado');return t}
 function list(st){return Object.values(orders).filter(function(o){return o.status===st&&(filtro==='todas'||o.filial===filtro)}).sort(function(a,b){return (b.atualizado||0)-(a.atualizado||0)})}
 function count(st){return Object.values(orders).filter(function(o){return o.status===st}).length}
 function save(id,patch){
@@ -136,9 +136,9 @@ function card(o){
 }
 function render(){
   var tl=tabs();
-  if(tab==='novo'&&isFilial())tab=tl[0];
+  if(tab==='novo'&&(isFilial()||isEntregador()))tab=tl[0];
   if(tab!=='novo'&&tl.indexOf(tab)<0)tab=tl[0];
-  var nav=isFilial()?'':'<button data-a="tab" data-v="novo" class="'+(tab==='novo'?'on':'')+'">+ Novo pedido</button>';
+  var nav=(isFilial()||isEntregador())?'':'<button data-a="tab" data-v="novo" class="'+(tab==='novo'?'on':'')+'">+ Novo pedido</button>';
   tl.forEach(function(k){nav+='<button data-a="tab" data-v="'+k+'" class="'+(tab===k?'on':'')+'">'+ST[k]+'<span class="badge">'+count(k)+'</span></button>'});
   document.getElementById('nav').innerHTML=nav;
   var m=document.getElementById('main');
@@ -232,8 +232,9 @@ var DOM='@setta.app',me=null,unsub=null,badMsg='';
 var MAP={matriz:'Setta 1 Matriz',conteudo:'Setta 3 Conteúdo',centro:'Setta 4 Centro',piraja:'Setta 5 Pirajá'};
 function isAdmin(){return !!me&&me.role==='admin'}
 function isSeparador(){return !!me&&me.role==='separador'}
-function seeAll(){return isAdmin()||isSeparador()}
+function seeAll(){return isAdmin()||isSeparador()||isEntregador()}
 function isFilial(){return !!me&&me.role==='filial'}
+function isEntregador(){return !!me&&me.role==='entregador'}
 function showLogin(msg){
   orders={};me=null;
   document.getElementById('app').style.display='none';
@@ -253,16 +254,16 @@ onAuthStateChanged(auth,function(user){
   if(unsub){unsub();unsub=null}
   if(!user){showLogin(badMsg);badMsg='';return}
   var un=(user.email||'').split('@')[0].toLowerCase();
-  var role=un==='admin'?'admin':(un==='separador'?'separador':(MAP[un]?'filial':null));
+  var role=un==='admin'?'admin':(un==='separador'?'separador':(un==='entregador'?'entregador':(MAP[un]?'filial':null)));
   if(!role){badMsg='Este usuário não tem acesso ao sistema.';signOut(auth);return}
   me={user:un,role:role,filial:MAP[un]||null};
   if(role==='filial')draft.filial=me.filial;
   document.getElementById('login').style.display='none';
   document.getElementById('app').style.display='block';
-  document.getElementById('who').textContent=role==='admin'?'Administrador':(role==='separador'?'Separação':me.filial);
-  tab=role==='filial'?'aguardando':'novo';filtro='todas';render();
+  document.getElementById('who').textContent=role==='admin'?'Administrador':(role==='separador'?'Separação':(role==='entregador'?'Entregador':me.filial));
+  tab=(role==='filial'||role==='entregador')?'aguardando':'novo';filtro='todas';render();
   var col=collection(fdb,'pedidos_setta');
-  var q=role==='admin'?col:(role==='separador'?query(col,where('status','in',['separacao','conferido','aguardando'])):query(col,where('filial','==',me.filial),where('status','in',['separacao','conferido','aguardando','conferencia','finalizado'])));
+  var q=role==='admin'?col:(role==='entregador'?query(col,where('status','==','aguardando')):role==='separador'?query(col,where('status','in',['separacao','conferido','aguardando'])):query(col,where('filial','==',me.filial),where('status','in',['separacao','conferido','aguardando','conferencia','finalizado'])));
   unsub=onSnapshot(q,function(s){
     var n={};s.forEach(function(d){n[d.id]=d.data()});orders=n;
     if(document.activeElement&&document.activeElement.matches('input,select,textarea')){pending=true}else render();
