@@ -32,7 +32,7 @@ input,select,textarea{border:1px solid var(--bd);background:var(--card);border-r
 .num{font-weight:700;font-size:17px}.mut{color:var(--mut);font-size:13px}
 label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
 .filter{margin-bottom:10px}.empty{text-align:center;color:var(--mut);padding:28px 0}
-.item{display:flex;justify-content:space-between;border-top:1px dashed var(--bd);padding:6px 0}
+table{border-collapse:collapse;width:100%;min-width:640px}th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--bd)}th{font-size:12px;color:var(--mut)}.item{display:flex;justify-content:space-between;border-top:1px dashed var(--bd);padding:6px 0}
 .item button{padding:2px 8px}.bad{color:var(--bad)}.okc{color:var(--ok)}
 .add{display:grid;grid-template-columns:2fr 1fr auto;gap:6px;margin-top:8px}
 .sg{margin-top:8px}.sg button{min-width:84px}
@@ -67,7 +67,7 @@ function toast(m){var t=document.getElementById('toast');t.textContent=m;t.class
 function fmt(t){return t?new Date(t).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):''}
 function fmtQ(q){q=+q;return '<span class="'+(q<0?'bad':'okc')+'">'+(q<0?'−':'+')+Math.abs(q)+' un.</span>'}
 function btns(){return isSeparador()?BTN.slice(0,3):BTN}
-function tabs(){if(isEntregador())return['aguardando'];if(isSeparador())return['separacao','conferido','aguardando'];var t=['separacao','conferido','aguardando','conferencia'];if(isAdmin())t.push('correcao');t.push('finalizado');return t}
+function tabs(){if(isEntregador())return['aguardando'];if(isSeparador())return['separacao','conferido','aguardando'];var t=['separacao','conferido','aguardando','conferencia'];if(isAdmin())t.push('correcao');t.push('finalizado');if(isAdmin())t.push('relatorio');return t}
 function list(st){return Object.values(orders).filter(function(o){return o.status===st&&(filtro==='todas'||o.filial===filtro)}).sort(function(a,b){return (b.atualizado||0)-(a.atualizado||0)})}
 function count(st){return Object.values(orders).filter(function(o){return o.status===st}).length}
 function save(id,patch){
@@ -134,12 +134,32 @@ function card(o){
   if(isAdmin())h+='<div class="row" style="margin-top:12px"><button data-a="editar">Editar pedido</button>'+(confirmDel===o.id?'<span class="bad">Excluir este pedido?</span><button class="dangerx" data-a="excluir-sim">Sim, excluir</button><button data-a="excluir-nao">Cancelar</button>':'<button class="danger" data-a="excluir">Excluir pedido</button>')+'</div>';
   return h+'</div>';
 }
+function relatorio(){
+  var P={},all=Object.values(orders),comErro=0;
+  function pes(n){n=(n||'').trim();if(!n)return null;var k=n.toLowerCase();return P[k]||(P[k]={nome:n,sep:0,conf:0,emb:0,ent:0,esep:0,econf:0,eemb:0})}
+  function cel(n,e){return '<td><b>'+n+'</b>'+(e?' <span class="bad">· '+e+' erro'+(e>1?'s':'')+'</span>':'')+'</td>'}
+  all.forEach(function(o){
+    var err=o.correcao===true&&(o.status==='correcao'||o.status==='finalizado'),a;
+    if(err)comErro++;
+    if(o.status!=='separacao'&&(a=pes(o.separador))){a.sep++;if(err)a.esep++}
+    if(a=pes(o.conferiu)){a.conf++;if(err)a.econf++}
+    if(a=pes(o.embalou)){a.emb++;if(err)a.eemb++}
+    if(a=pes(o.conferiuEntrega))a.ent++;
+  });
+  var rows=Object.values(P).sort(function(a,b){return (b.sep+b.conf+b.emb+b.ent)-(a.sep+a.conf+a.emb+a.ent)});
+  var h='<div class="card"><b>'+all.length+'</b> pedidos no total · <span class="bad"><b>'+comErro+'</b> com correção</span></div>';
+  if(!rows.length)return h+'<div class="empty">Ainda não há atividades registradas.</div>';
+  h+='<div class="card" style="overflow-x:auto"><table><thead><tr><th>Pessoa</th><th>Separações</th><th>Conferências</th><th>Embalagens</th><th>Conf. de entrega</th><th>Total de erros</th></tr></thead><tbody>';
+  rows.forEach(function(p){var te=p.esep+p.econf+p.eemb;
+    h+='<tr><td><b>'+esc(p.nome)+'</b></td>'+cel(p.sep,p.esep)+cel(p.conf,p.econf)+cel(p.emb,p.eemb)+'<td><b>'+p.ent+'</b></td><td class="'+(te?'bad':'mut')+'"><b>'+te+'</b></td></tr>'});
+  return h+'</tbody></table></div><div class="mut">Erro = pedido que precisou de correção na conferência de entrega, contado para o separador, o conferente e o embalador daquele pedido.</div>';
+}
 function render(){
   var tl=tabs();
   if(tab==='novo'&&(isFilial()||isEntregador()))tab=tl[0];
   if(tab!=='novo'&&tl.indexOf(tab)<0)tab=tl[0];
   var nav=(isFilial()||isEntregador())?'':'<button data-a="tab" data-v="novo" class="'+(tab==='novo'?'on':'')+'">+ Novo pedido</button>';
-  tl.forEach(function(k){nav+='<button data-a="tab" data-v="'+k+'" class="'+(tab===k?'on':'')+'">'+ST[k]+'<span class="badge">'+count(k)+'</span></button>'});
+  tl.forEach(function(k){nav+='<button data-a="tab" data-v="'+k+'" class="'+(tab===k?'on':'')+'">'+(k==='relatorio'?'Relatório':ST[k]+'<span class="badge">'+count(k)+'</span>')+'</button>'});
   document.getElementById('nav').innerHTML=nav;
   var m=document.getElementById('main');
   if(tab==='novo'){
@@ -151,6 +171,7 @@ function render(){
     if(s&&draft.sep){s.value=draft.sep;if(s.value==='__outro'){var oo=m.querySelector('.nsepo');oo.style.display='block';oo.value=draft.sepo}}
     return;
   }
+  if(tab==='relatorio'){m.innerHTML=relatorio();return}
   var f=!seeAll()?'':'<div class="filter row"><span class="mut">Filial:</span>'+['todas'].concat(FILIAIS).map(function(x){return '<button data-a="filtro" data-v="'+esc(x)+'" class="'+(filtro===x?'on':'')+'">'+(x==='todas'?'Todas':esc(x))+'</button>'}).join('')+'</div>';
   var l=list(tab);
   m.innerHTML=f+(l.length?l.map(card).join(''):'<div class="empty">Nenhum pedido nesta aba.</div>');
