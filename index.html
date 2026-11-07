@@ -59,8 +59,8 @@ import {getFirestore,collection,query,where,onSnapshot,doc,setDoc,deleteDoc} fro
 var FILIAIS=['Setta 1 Matriz','Setta 3 Conteúdo','Setta 4 Centro','Setta 5 Pirajá'];
 var ST={separacao:'Em Separação',conferido:'Aguardando Conferência',aguardando:'Aguardando Entrega',conferencia:'Conferência de Entrega',correcao:'Precisa de Correção',finalizado:'Finalizados'};
 var BTN=[['separacao','Em separação'],['conferido','Aguardando conferência'],['aguardando','Aguardando entrega'],['conferencia','Entregue']];
-var SEPS=['Auricelia','Caio','Italu','Pedro','Tarciano','Wesley'];
-var EQUIPE=['Auricelia','Caio','Edmilson','Hebert','Igor','Italu','Maycon','Osmar','Pedro','Sandra','Tarciano','Wesley'];
+var SEPS=['Abel','Auricelia','Caio','Italu','Junior','Pedro','Tarciano','Wesley'];
+var EQUIPE=['Abel','Auricelia','Caio','Edmilson','Hebert','Igor','Italu','Junior','Maycon','Osmar','Pedro','Sandra','Tarciano','Wesley'];
 var orders={},tab='novo',filtro='todas',pending=false,confirmDel=null,editing=null,sinal='+',tipo='NF',draft={num:'',filial:FILIAIS[0],st:'separacao',sep:'',sepo:''};
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function toast(m){var t=document.getElementById('toast');t.textContent=m;t.className='s';setTimeout(function(){t.className=''},2400)}
