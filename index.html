@@ -149,10 +149,10 @@ function relatorio(){
   var rows=Object.values(P).sort(function(a,b){return (b.sep+b.conf+b.emb+b.ent)-(a.sep+a.conf+a.emb+a.ent)});
   var h='<div class="card"><b>'+all.length+'</b> pedidos no total · <span class="bad"><b>'+comErro+'</b> com correção</span></div>';
   if(!rows.length)return h+'<div class="empty">Ainda não há atividades registradas.</div>';
-  h+='<div class="card" style="overflow-x:auto"><table><thead><tr><th>Pessoa</th><th>Separações</th><th>Conferências</th><th>Embalagens</th><th>Conf. de entrega</th><th>Total de erros</th></tr></thead><tbody>';
-  rows.forEach(function(p){var te=p.esep+p.econf+p.eemb;
-    h+='<tr><td><b>'+esc(p.nome)+'</b></td>'+cel(p.sep,p.esep)+cel(p.conf,p.econf)+cel(p.emb,p.eemb)+'<td><b>'+p.ent+'</b></td><td class="'+(te?'bad':'mut')+'"><b>'+te+'</b></td></tr>'});
-  return h+'</tbody></table></div><div class="mut">Erro = pedido que precisou de correção na conferência de entrega, contado para o separador, o conferente e o embalador daquele pedido.</div>';
+  h+='<div class="card" style="overflow-x:auto"><table><thead><tr><th>Pessoa</th><th>Separações</th><th>Conferências</th><th>Embalagens</th><th>Conf. de entrega</th><th>Total de erros</th><th>% de acerto</th></tr></thead><tbody>';
+  rows.forEach(function(p){var te=p.esep+p.econf+p.eemb,tf=p.sep+p.conf+p.emb,pc=tf?(((tf-te)/tf)*100).toFixed(1).replace('.',',')+'%':'—';
+    h+='<tr><td><b>'+esc(p.nome)+'</b></td>'+cel(p.sep,p.esep)+cel(p.conf,p.econf)+cel(p.emb,p.eemb)+'<td><b>'+p.ent+'</b></td><td class="'+(te?'bad':'mut')+'"><b>'+te+'</b></td><td><b>'+pc+'</b></td></tr>'});
+  return h+'</tbody></table></div><div class="mut">Erro = pedido que precisou de correção na conferência de entrega, contado para o separador, o conferente e o embalador daquele pedido. % de acerto = (separações + conferências + embalagens − erros) ÷ (separações + conferências + embalagens).</div>';
 }
 function render(){
   var tl=tabs();
