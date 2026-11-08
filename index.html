@@ -38,6 +38,13 @@ table{border-collapse:collapse;width:100%;min-width:640px}th,td{text-align:left;
 .sg{margin-top:8px}.sg button{min-width:84px}
 #toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:8px 14px;border-radius:8px;opacity:0;transition:.2s;pointer-events:none}
 #toast.s{opacity:1}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:99px;border:1px solid var(--bd);color:var(--mut);margin-left:8px;vertical-align:middle}
+.pill{color:#fff;font-size:12px;font-weight:600;padding:3px 10px;border-radius:99px;white-space:nowrap;align-self:flex-start}
+.prog{display:flex;gap:3px;margin:4px 0 10px}.prog span{flex:1;height:5px;border-radius:3px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+nav button .badge.late{background:var(--bad);color:#fff}
+.card button.fin{padding:10px 16px;font-weight:600}
+@media (max-width:600px){.card button.fin{width:100%}}
 </style>
 </head>
 <body>
@@ -47,6 +54,7 @@ table{border-collapse:collapse;width:100%;min-width:640px}th,td{text-align:left;
 <form id="lform"><label>Usuário</label><input id="lu" autocomplete="username" autocapitalize="none" autocorrect="off"><label>Senha</label><input id="lp" type="password" autocomplete="current-password"><div id="lerr" class="bad" style="min-height:22px;margin-top:8px"></div><button class="fin" type="submit" style="width:100%;margin-top:6px">Entrar</button></form></div></div>
 <div class="wrap" id="app" style="display:none">
 <header><div class="brand"><div class="logo" role="img" aria-label="Setta Papelaria"></div><h1>Monitoramento de Pedidos Setta</h1></div><div class="row"><span class="chip" id="who"></span><button id="out">Sair</button></div></header>
+<input id="busca" type="search" placeholder="🔍 Buscar pedido (nº do pedido ou da NF)" style="margin-bottom:10px">
 <nav id="nav"></nav>
 <main id="main"></main>
 <footer class="foot"><div class="logo" role="img" aria-label="Setta Papelaria"></div></footer>
@@ -61,7 +69,17 @@ var ST={separacao:'Em Separação',conferido:'Aguardando Conferência',nf:'Aguar
 var BTN=[['separacao','Em separação'],['conferido','Aguardando conferência'],['nf','Aguardando NF'],['aguardando','Aguardando entrega'],['conferencia','Entregue']];
 var SEPS=['Abel','Auricelia','Caio','Italu','Junior','Pedro','Tarciano','Wesley'];
 var EQUIPE=['Abel','Auricelia','Caio','Edmilson','Hebert','Igor','Italu','Junior','Maycon','Osmar','Pedro','Sandra','Tarciano','Wesley'];
-var orders={},tab='novo',filtro='todas',pending=false,mesSel=null,confirmDel=null,editing=null,sinal='+',tipo='NF',draft={num:'',filial:FILIAIS[0],st:'separacao',sep:'',sepo:''};
+var orders={},tab='novo',filtro='todas',pending=false,mesSel=null,confirmDel=null,editing=null,sinal='+',tipo='NF',draft={num:'',filial:FILIAIS[0],st:'separacao',sep:'',sepo:'',foco:false};
+var busca='',recentes=[];
+/* Cor de cada etapa */
+var COR={separacao:'#2563eb',conferido:'#7c3aed',nf:'#d97706',aguardando:'#ea580c',conferencia:'#0d9488',correcao:'#dc2626',finalizado:'#16a34a'};
+var ETAPAS=['separacao','conferido','nf','aguardando','conferencia','finalizado'];
+/* Aviso de pedido parado: [horas para amarelo, horas para vermelho] em cada etapa */
+var LIMITE={separacao:[2,6],conferido:[1,4],nf:[1,4],aguardando:[8,24],conferencia:[8,24],correcao:[24,72]};
+function horas(o){return (Date.now()-(o.atualizado||o.criado||Date.now()))/36e5}
+function atraso(o){var L=LIMITE[o.status];if(!L)return 0;var h=horas(o);return h>=L[1]?2:h>=L[0]?1:0}
+function idade(o){var h=horas(o);return h<1?'há '+Math.max(1,Math.round(h*60))+' min':h<24?'há '+Math.floor(h)+' h':'há '+Math.floor(h/24)+' d'}
+function progresso(o){var i=o.status==='correcao'?4:ETAPAS.indexOf(o.status);return '<div class="prog">'+ETAPAS.map(function(k,n){return '<span style="background:'+(n<=i?COR[o.status]:'var(--bd)')+'"></span>'}).join('')+'</div>'}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function toast(m){var t=document.getElementById('toast');t.textContent=m;t.className='s';setTimeout(function(){t.className=''},2400)}
 function fmt(t){return t?new Date(t).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):''}
@@ -127,7 +145,8 @@ function editForm(o){
 }
 function card(o){
   var ed=isAdmin()&&editing===o.id;
-  var h='<div class="card" data-id="'+esc(o.id)+'"><div class="top"><div><span class="num">Pedido '+esc(o.numero)+'</span><div class="mut">'+esc(o.filial)+' · atualizado '+fmt(o.atualizado)+'</div></div>'+(o.status==='finalizado'?'<span class="okc">✔ Finalizado '+fmt(o.finalizadoEm)+'</span>':'')+'</div>';
+  var cor=COR[o.status]||'var(--bd)',at=atraso(o);
+  var h='<div class="card" data-id="'+esc(o.id)+'" style="border-left:5px solid '+cor+'"><div class="top"><div><span class="num">Pedido '+esc(o.numero)+'</span><span class="tag">'+esc(o.filial)+'</span><div class="mut">'+(o.status==='finalizado'?'✔ Finalizado '+fmt(o.finalizadoEm):'Atualizado '+fmt(o.atualizado)+(at?' · <span style="color:var('+(at===2?'--bad':'--warn')+');font-weight:600">⏱ '+idade(o)+' nesta etapa</span>':' · '+idade(o)))+'</div></div><span class="pill" style="background:'+cor+'">'+esc(ST[o.status]||o.status)+'</span></div>'+progresso(o);
   if(ed)return h+editForm(o)+'</div>';
   h+=infoLine(o);
   if(o.status==='finalizado'||o.status==='correcao'){h+=(o.correcao?'<div class="bad">Houve correção:</div>':'<div class="mut">Sem correções.</div>')+itensHtml(o,false)+(o.obs?'<div style="margin:6px 0"><span class="mut">Observação:</span> '+esc(o.obs)+'</div>':'')}
@@ -167,16 +186,19 @@ function render(){
   if(tab==='novo'&&(isFilial()||isEntregador()))tab=tl[0];
   if(tab!=='novo'&&tl.indexOf(tab)<0)tab=tl[0];
   var nav=(isFilial()||isEntregador())?'':'<button data-a="tab" data-v="novo" class="'+(tab==='novo'?'on':'')+'">+ Novo pedido</button>';
-  tl.forEach(function(k){nav+='<button data-a="tab" data-v="'+k+'" class="'+(tab===k?'on':'')+'">'+(k==='relatorio'?'Relatório':ST[k]+'<span class="badge">'+count(k)+'</span>')+'</button>'});
+  tl.forEach(function(k){var cr=COR[k],on=tab===k&&!busca,late=Object.values(orders).filter(function(o){return o.status===k&&atraso(o)===2}).length;
+    nav+='<button data-a="tab" data-v="'+k+'" class="'+(on?'on':'')+'"'+(on&&cr?' style="background:'+cr+';border-color:'+cr+';color:#fff"':'')+'>'+(k==='relatorio'?'Relatório':'<i class="dot" style="background:'+cr+'"></i>'+ST[k]+'<span class="badge'+(late?' late':'')+'">'+count(k)+'</span>')+'</button>'});
   document.getElementById('nav').innerHTML=nav;
   var m=document.getElementById('main');
+  if(busca){var qq=busca.toLowerCase(),rs=Object.values(orders).filter(function(o){return (String(o.numero)+' '+String(o.nfNumero||'')).toLowerCase().indexOf(qq)>=0}).sort(function(a,b){return (b.atualizado||0)-(a.atualizado||0)});m.innerHTML='<div class="mut" style="margin-bottom:8px">Resultados da busca em todas as etapas: '+rs.length+'</div>'+(rs.length?rs.map(card).join(''):'<div class="empty">Nenhum pedido encontrado.</div>');return}
   if(tab==='novo'){
     var fo=FILIAIS.map(function(x){return '<button data-a="dfilial" data-v="'+esc(x)+'" class="'+(draft.filial===x?'on':'')+'">'+esc(x)+'</button>'}).join('');
     if(!seeAll())fo='<span class="chip">'+esc(me.filial)+'</span>';
     var so=btns().map(function(b){return '<button data-a="dst" data-v="'+b[0]+'" class="'+(draft.st===b[0]?'on':'')+'">'+b[1]+'</button>'}).join('');
-    m.innerHTML='<div class="card"><label>Número do pedido</label><input id="num" inputmode="numeric" value="'+esc(draft.num)+'" placeholder="Ex.: 12345"><label>Filial</label><div class="row">'+fo+'</div><label>Status do pedido</label><div class="row">'+so+'</div>'+(draft.st==='separacao'?nameSel('nsep',SEPS,'Separador:'):'')+'<div style="margin-top:14px"><button class="fin" data-a="add">Processar pedido</button></div></div>';
+    m.innerHTML='<div class="card"><label>Número do pedido</label><input id="num" inputmode="numeric" value="'+esc(draft.num)+'" placeholder="Ex.: 12345"><label>Filial</label><div class="row">'+fo+'</div><label>Status do pedido</label><div class="row">'+so+'</div>'+(draft.st==='separacao'?nameSel('nsep',SEPS,'Separador:'):'')+'<div style="margin-top:14px"><button class="fin" data-a="add">Processar pedido</button></div></div>'+(recentes.length?'<div class="card"><div class="mut" style="margin-bottom:4px">Últimos cadastrados</div>'+recentes.map(function(r){return '<div class="item"><span><b>'+esc(r.numero)+'</b> · '+esc(r.filial)+'</span><span class="mut">'+esc(r.etapa)+'</span></div>'}).join('')+'</div>':'');
     var s=m.querySelector('.nsep');
     if(s&&draft.sep){s.value=draft.sep;if(s.value==='__outro'){var oo=m.querySelector('.nsepo');oo.style.display='block';oo.value=draft.sepo}}
+    if(draft.foco){draft.foco=false;var ni=m.querySelector('#num');if(ni)ni.focus()}
     return;
   }
   if(tab==='relatorio'){m.innerHTML=relatorio();return}
@@ -188,7 +210,7 @@ document.addEventListener('change',function(e){var s=e.target;if(s.classList&&s.
 document.addEventListener('click',function(e){
   var b=e.target.closest('[data-a]');if(!b)return;
   var a=b.dataset.a,v=b.dataset.v,c=b.closest('.card'),id=c&&c.dataset.id,o=id&&orders[id];
-  if(a==='tab'){tab=v;confirmDel=null;editing=null;mesSel=null;render()}
+  if(a==='tab'){tab=v;confirmDel=null;editing=null;mesSel=null;if(v==='novo')draft.foco=true;if(busca){busca='';document.getElementById('busca').value=''}render()}
   else if(a==='filtro'){filtro=v;render()}
   else if(a==='dfilial'||a==='dst'){saveDraft(c);if(a==='dfilial')draft.filial=v;else draft.st=v;render()}
   else if(a==='add'){
@@ -197,9 +219,10 @@ document.addEventListener('click',function(e){
     if(Object.values(orders).some(function(x){return x.numero===n&&x.filial===draft.filial})){toast('Este pedido já existe nesta filial');return}
     var dest=draft.st,ord={numero:n,filial:draft.filial,status:dest,correcao:false,itens:[],criado:Date.now()};
     if(dest==='separacao'){var sp=nameVal(c,'nsep');if(!sp){toast('Informe o separador');return}ord.separador=sp}
-    draft.num='';draft.sep='';draft.sepo='';
+    draft.num='';draft.foco=true;
+    recentes.unshift({numero:n,filial:draft.filial,etapa:ST[dest]});recentes=recentes.slice(0,5);
     save('p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),ord);
-    tab=dest;render();toast('Pedido enviado para '+ST[dest]);
+    toast('Pedido '+n+' cadastrado em '+ST[dest]);
   }
   else if(a==='finsep'&&o){save(id,{status:'conferido'});toast('Enviado para Aguardando Conferência')}
   else if(a==='finconf'&&o){
@@ -248,6 +271,8 @@ document.addEventListener('click',function(e){
   else if(a==='excluir-sim'&&o){removeOrder(id);toast('Pedido excluído')}
 });
 document.addEventListener('focusout',function(){setTimeout(function(){if(pending&&!document.activeElement.matches('input,select,textarea')){pending=false;render()}},50)});
+document.getElementById('busca').addEventListener('input',function(e){busca=e.target.value.trim();render()});
+document.addEventListener('keydown',function(e){if(e.key==='Enter'&&e.target.id==='num'){var bt=document.querySelector('[data-a="add"]');if(bt)bt.click()}});
 var firebaseConfig={
   apiKey:"AIzaSyDUbRGy8MVkeuUyKWuKEDi5lOqPERbvoUc",
   authDomain:"controle-de-pedidos-dipel.firebaseapp.com",
@@ -266,7 +291,7 @@ function seeAll(){return isAdmin()||isSeparador()||isEntregador()}
 function isFilial(){return !!me&&me.role==='filial'}
 function isEntregador(){return !!me&&me.role==='entregador'}
 function showLogin(msg){
-  orders={};me=null;
+  orders={};me=null;busca='';document.getElementById('busca').value='';
   document.getElementById('app').style.display='none';
   document.getElementById('login').style.display='block';
   document.getElementById('lerr').textContent=msg||'';
@@ -296,7 +321,7 @@ onAuthStateChanged(auth,function(user){
   var q=role==='admin'?col:(role==='entregador'?query(col,where('status','==','aguardando')):role==='separador'?query(col,where('status','in',['separacao','conferido','nf','aguardando'])):query(col,where('filial','==',me.filial),where('status','in',['separacao','conferido','nf','aguardando','conferencia','finalizado'])));
   unsub=onSnapshot(q,function(s){
     var n={};s.forEach(function(d){n[d.id]=d.data()});orders=n;
-    if(document.activeElement&&document.activeElement.matches('input,select,textarea')){pending=true}else render();
+    if(document.activeElement&&document.activeElement.id!=='busca'&&document.activeElement.matches('input,select,textarea')){pending=true}else render();
   },function(){toast('Sem permissão para ler os pedidos')});
 });
 </script>
