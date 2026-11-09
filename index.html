@@ -59,6 +59,17 @@ nav button .badge.late{background:var(--bad);color:#fff}
  body.menu #scrim{display:block;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:20}
  #menuBtn{display:inline-block}
 }
+@keyframes pulso{0%,100%{box-shadow:0 0 0 0 rgba(234,88,12,.5)}50%{box-shadow:0 0 0 10px rgba(234,88,12,0)}}
+.acao{border-color:var(--wc);animation:pulso 1.8s infinite}
+.avisoacao{display:flex;gap:12px;align-items:center;background:var(--wc);color:#fff;border-radius:10px;padding:10px 12px;margin:-4px 0 12px;font-weight:700}
+.avisoacao .ic{font-size:28px}.avisoacao small{display:block;font-weight:400}
+.sec{font-weight:700;margin:16px 0 8px}
+.card button.big{width:100%;padding:16px;font-size:17px;font-weight:700;border-radius:12px}
+.escolha{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.escolha button{padding:16px 8px;font-size:16px;font-weight:700;border-radius:12px;border-width:2px}
+.escolha button.ok.on{background:var(--ok);border-color:var(--ok);color:#fff}
+.escolha button.nok.on{background:var(--bad);border-color:var(--bad);color:#fff}
+nav button .badge.acaoB{background:#ea580c;color:#fff;animation:pulso 1.8s infinite}
 </style>
 </head>
 <body>
@@ -99,6 +110,8 @@ function dur(o){if(!o.criado||!o.finalizadoEm)return '';var m=Math.round((o.fina
 var NOMES={andamento:'Em andamento',relatorio:'Relatório'};
 var PRIO={conferencia:0,aguardando:1,nf:2,conferido:3,separacao:4,correcao:5};
 function naAba(o,k){return k==='andamento'?o.status!=='finalizado':o.status===k}
+function minhaAcao(o){return isFilial()&&(o.status==='aguardando'||o.status==='conferencia')}
+function aviso(o){if(!minhaAcao(o))return '';var t=o.status==='aguardando'?['📦','Seu pedido chegou?','Conte os volumes e toque em “Recebi o pedido”.']:['🔍','Hora de conferir!','Veja se está tudo certo e finalize a conferência.'];return '<div class="avisoacao"><span class="ic">'+t[0]+'</span><div>'+t[1]+'<small>'+t[2]+'</small></div></div>'}
 function progresso(o){var i=o.status==='correcao'?4:ETAPAS.indexOf(o.status);return '<div class="prog">'+ETAPAS.map(function(k,n){return '<span style="background:'+(n<=i?COR[o.status]:'var(--bd)')+'"></span>'}).join('')+'</div>'}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function toast(m){var t=document.getElementById('toast');t.textContent=m;t.className='s';setTimeout(function(){t.className=''},2400)}
@@ -132,7 +145,7 @@ function infoLine(o){var p=[];
   return p.length?'<div class="mut" style="margin-bottom:6px">'+p.join(' · ')+'</div>':''}
 function itensHtml(o,del){return (o.itens||[]).map(function(i,n){return '<div class="item"><span>'+(i.tipo?'<b>'+esc(i.tipo)+'</b> · ':'')+'Produto '+esc(i.produto)+' — '+fmtQ(i.qtd)+'</span>'+(del?'<button data-a="del" data-v="'+n+'">✕</button>':'')+'</div>'}).join('')}
 function confEntrega(o){
-  var h='<div class="row" style="margin-bottom:6px"><button data-a="corr" data-v="0" class="'+(!o.correcao?'on':'')+'">Sem correção</button><button data-a="corr" data-v="1" class="'+(o.correcao?'on':'')+'">Precisa de correção</button></div>';
+  var h='<div class="escolha"><button class="ok'+(!o.correcao?' on':'')+'" data-a="corr" data-v="0">✅ Está tudo certo</button><button class="nok'+(o.correcao?' on':'')+'" data-a="corr" data-v="1">⚠️ Tem algo errado</button></div>';
   if(o.correcao){
     h+=itensHtml(o,true);
     h+='<div class="row sg"><button data-a="tipo" data-v="NF" class="'+(tipo==='NF'?'on':'')+'">NF</button><button data-a="tipo" data-v="Pedido" class="'+(tipo==='Pedido'?'on':'')+'">Pedido</button></div>';
@@ -141,14 +154,14 @@ function confEntrega(o){
     h+='<label>Observação (o que precisa ser feito)</label><textarea class="ob" rows="3">'+esc(o.obs||'')+'</textarea>';
   }
   h+='<label>Conferido por (nome)</label><input class="ce" value="'+esc(o.conferiuEntrega||'')+'">';
-  return h+'<div style="margin-top:12px"><button class="fin" data-a="finent">Finalizar conferência de entrega</button></div>';
+  return h+'<div style="margin-top:12px"><button class="fin big" data-a="finent">🏁 Finalizar conferência</button></div>';
 }
 function actions(o){
   var s=o.status,ad=isAdmin(),sp=isSeparador(),fi=isFilial();
   if(s==='separacao'&&(ad||sp))return '<button class="fin" data-a="finsep">Finalizada a separação</button>';
   if(s==='conferido'&&(ad||sp))return '<div style="max-width:160px"><label>Volumes</label><input class="vol" type="number" min="1" value="'+esc(o.volumes||'')+'"></div>'+nameSel('cf',EQUIPE,'Conferido por:')+nameSel('em',EQUIPE,'Embalado por:')+'<div style="margin-top:12px"><button class="fin" data-a="finconf">Finalizada a conferência</button></div>';
   if(s==='nf'&&ad)return '<div style="max-width:220px"><label>Número da NF</label><input class="nfn" inputmode="numeric" value="'+esc(o.nfNumero||'')+'"></div><div style="margin-top:12px"><button class="fin" data-a="finnf">NF emitida</button></div>';
-  if(s==='aguardando'&&(ad||fi))return '<div style="max-width:180px"><label>Volumes recebidos</label><input class="volr" type="number" min="0"></div><div style="margin-top:12px"><button class="fin" data-a="entregue">Entregue</button></div>';
+  if(s==='aguardando'&&(ad||fi))return '<label>📦 Quantos volumes você recebeu?</label><input class="volr" type="number" min="0" inputmode="numeric" style="max-width:200px;font-size:20px"><div style="margin-top:12px"><button class="fin big" data-a="entregue">✅ Recebi o pedido</button></div>';
   if(s==='conferencia'&&(ad||fi))return confEntrega(o);
   if(s==='correcao'&&ad)return '<button class="fin" data-a="aprovar">Aprovar correção e finalizar</button>';
   return '';
@@ -166,7 +179,7 @@ function editForm(o){
 function card(o){
   var ed=isAdmin()&&editing===o.id;
   var cor=COR[o.status]||'var(--bd)',at=atraso(o);
-  var h='<div class="card" data-id="'+esc(o.id)+'" style="border-left:5px solid '+cor+'"><div class="top"><div><span class="num">Pedido '+esc(o.numero)+'</span><span class="tag">'+esc(o.filial)+'</span><div class="mut">'+(o.status==='finalizado'?'✔ Finalizado '+fmt(o.finalizadoEm)+(dur(o)?' · ⏱ Tempo total: <b>'+dur(o)+'</b>':''):'Atualizado '+fmt(o.atualizado)+(at?' · <span style="color:var('+(at===2?'--bad':'--warn')+');font-weight:600">⏱ '+idade(o)+' nesta etapa</span>':' · '+idade(o)))+'</div></div><span class="pill" style="background:'+cor+'">'+esc(ST[o.status]||o.status)+'</span></div>'+progresso(o);
+  var h='<div class="card'+(minhaAcao(o)?' acao':'')+'" data-id="'+esc(o.id)+'" style="--wc:'+cor+';border-left:5px solid '+cor+'">'+aviso(o)+'<div class="top"><div><span class="num">Pedido '+esc(o.numero)+'</span><span class="tag">'+esc(o.filial)+'</span><div class="mut">'+(o.status==='finalizado'?'✔ Finalizado '+fmt(o.finalizadoEm)+(dur(o)?' · ⏱ Tempo total: <b>'+dur(o)+'</b>':''):'Atualizado '+fmt(o.atualizado)+(at?' · <span style="color:var('+(at===2?'--bad':'--warn')+');font-weight:600">⏱ '+idade(o)+' nesta etapa</span>':' · '+idade(o)))+'</div></div><span class="pill" style="background:'+cor+'">'+esc(ST[o.status]||o.status)+'</span></div>'+progresso(o);
   if(ed)return h+editForm(o)+'</div>';
   h+=infoLine(o);
   if(o.status==='finalizado'||o.status==='correcao'){h+=(o.correcao?'<div class="bad">Houve correção:</div>':'<div class="mut">Sem correções.</div>')+itensHtml(o,false)+(o.obs?'<div style="margin:6px 0"><span class="mut">Observação:</span> '+esc(o.obs)+'</div>':'')}
@@ -208,8 +221,8 @@ function render(){
   if(tab==='novo'&&(isFilial()||isEntregador()))tab=tl[0];
   if(tab!=='novo'&&tl.indexOf(tab)<0)tab=tl[0];
   var nav=(isFilial()||isEntregador())?'':'<button data-a="tab" data-v="novo" class="'+(tab==='novo'?'on':'')+'">+ Novo pedido</button>';
-  tl.forEach(function(k){var cr=COR[k],on=tab===k&&!busca,late=Object.values(orders).filter(function(o){return naAba(o,k)&&atraso(o)===2}).length;
-    nav+='<button data-a="tab" data-v="'+k+'" class="'+(on?'on':'')+'"'+(on&&cr?' style="background:'+cr+';border-color:'+cr+';color:#fff"':'')+'>'+(k==='relatorio'?'Relatório':'<i class="dot" style="background:'+cr+'"></i>'+(ST[k]||NOMES[k])+'<span class="badge'+(late?' late':'')+'">'+count(k)+'</span>')+'</button>'});
+  tl.forEach(function(k){var cr=COR[k],on=tab===k&&!busca,late=Object.values(orders).filter(function(o){return naAba(o,k)&&atraso(o)===2}).length,acn=isFilial()&&k==='andamento'?Object.values(orders).filter(minhaAcao).length:0;
+    nav+='<button data-a="tab" data-v="'+k+'" class="'+(on?'on':'')+'"'+(on&&cr?' style="background:'+cr+';border-color:'+cr+';color:#fff"':'')+'>'+(k==='relatorio'?'Relatório':'<i class="dot" style="background:'+cr+'"></i>'+(ST[k]||NOMES[k])+'<span class="badge'+(late?' late':'')+'">'+count(k)+'</span>'+(acn?'<span class="badge acaoB">'+acn+' p/ você</span>':''))+'</button>'});
   document.getElementById('nav').innerHTML=nav;
   var m=document.getElementById('main');
   if(busca){var qq=busca.toLowerCase(),rs=Object.values(orders).filter(function(o){return (String(o.numero)+' '+String(o.nfNumero||'')).toLowerCase().indexOf(qq)>=0}).sort(function(a,b){return (b.atualizado||0)-(a.atualizado||0)});m.innerHTML='<div class="mut" style="margin-bottom:8px">Resultados da busca em todas as etapas: '+rs.length+'</div>'+(rs.length?rs.map(card).join(''):'<div class="empty">Nenhum pedido encontrado.</div>');return}
@@ -227,6 +240,7 @@ function render(){
   var f=!seeAll()?'':'<div class="filter row"><span class="mut">Filial:</span>'+['todas'].concat(FILIAIS).map(function(x){return '<button data-a="filtro" data-v="'+esc(x)+'" class="'+(filtro===x?'on':'')+'">'+(x==='todas'?'Todas':esc(x))+'</button>'}).join('')+'</div>';
   var l=list(tab),rs0='';
   if(tab==='andamento'&&l.length)rs0='<div class="row" style="margin-bottom:10px">'+['conferencia','aguardando','nf','conferido','separacao'].map(function(k){var n=l.filter(function(o){return o.status===k}).length;return n?'<span class="chip"><i class="dot" style="background:'+COR[k]+'"></i>'+ST[k]+': <b>'+n+'</b></span>':''}).join('')+'</div>';
+  if(tab==='andamento'&&isFilial()){var ac=l.filter(minhaAcao),ou=l.filter(function(o){return !minhaAcao(o)});m.innerHTML=rs0+(ac.length?'<div class="sec">🔔 Precisam da sua ação ('+ac.length+')</div>'+ac.map(card).join(''):'<div class="card">🎉 Nada pendente com você agora.</div>')+(ou.length?'<div class="sec">⏳ Acompanhando (a Setta está cuidando)</div>'+ou.map(card).join(''):'');return}
   m.innerHTML=f+rs0+(l.length?l.map(card).join(''):'<div class="empty">'+(tab==='andamento'?'Nenhum pedido em andamento.':'Nenhum pedido nesta aba.')+'</div>');
 }
 document.addEventListener('change',function(e){var s=e.target;if(s.classList&&s.classList.contains('mes')){mesSel=s.value;render();return}if(s.matches&&s.matches('select[data-out]')){var n=s.nextElementSibling;if(n)n.style.display=s.value==='__outro'?'block':'none'}});
@@ -259,7 +273,7 @@ document.addEventListener('click',function(e){
   else if(a==='entregue'&&o){
     var vr=c.querySelector('.volr').value.trim();
     if(vr===''||+vr<0){toast('Informe quantos volumes recebeu');return}
-    save(id,{volRecebidos:vr,status:'conferencia'});toast('Enviado para Conferência de Entrega');
+    save(id,{volRecebidos:vr,status:'conferencia'});toast('🎉 Recebimento confirmado! Agora confira o pedido.');
   }
   else if(a==='corr'&&o){save(id,Object.assign(collect(c),{correcao:v==='1'}))}
   else if(a==='tipo'){tipo=v;c.querySelectorAll('[data-a="tipo"]').forEach(function(x){x.classList.toggle('on',x.dataset.v===v)})}
@@ -276,7 +290,7 @@ document.addEventListener('click',function(e){
     if(o.correcao&&!(o.itens||[]).length&&!pp.obs){toast('Informe o item ou a observação da correção');return}
     pp.status=o.correcao?'correcao':'finalizado';
     if(pp.status==='finalizado')pp.finalizadoEm=Date.now();
-    save(id,pp);toast(o.correcao?'Enviado para Precisa de Correção':'Pedido finalizado');
+    save(id,pp);toast(o.correcao?'⚠️ Enviado para correção':'🎉 Pedido finalizado, obrigado!');
   }
   else if(a==='aprovar'&&o){save(id,{status:'finalizado',finalizadoEm:Date.now()});toast('Pedido finalizado')}
   else if(a==='editar'){editing=id;render()}
