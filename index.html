@@ -348,7 +348,7 @@ onAuthStateChanged(auth,function(user){
   if(unsub){unsub();unsub=null}
   if(!user){showLogin(badMsg);badMsg='';return}
   var un=(user.email||'').split('@')[0].toLowerCase();
-  var role=un==='admin'?'admin':(un==='separador'?'separador':(un==='entregador'?'entregador':(MAP[un]?'filial':null)));
+  var role=(un==='admin'||un==='hebert')?'admin':(un==='separador'?'separador':(un==='entregador'?'entregador':(MAP[un]?'filial':null)));
   if(!role){badMsg='Este usuário não tem acesso ao sistema.';signOut(auth);return}
   me={user:un,role:role,filial:MAP[un]||null};
   if(role==='filial')draft.filial=me.filial;
