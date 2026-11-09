@@ -45,6 +45,20 @@ table{border-collapse:collapse;width:100%;min-width:640px}th,td{text-align:left;
 nav button .badge.late{background:var(--bad);color:#fff}
 .card button.fin{padding:10px 16px;font-weight:600}
 @media (max-width:600px){.card button.fin{width:100%}}
+.shell{display:flex;min-height:100vh}
+#side{width:250px;flex:none;background:var(--card);border-right:1px solid var(--bd);padding:14px;display:flex;flex-direction:column;gap:10px;position:sticky;top:0;height:100vh;overflow-y:auto}
+#side nav{flex-direction:column;overflow:visible;padding:0;margin:0;flex:1;gap:4px}
+#side nav button{text-align:left;width:100%;display:flex;align-items:center}
+#side nav button .badge{margin-left:auto}
+.content{flex:1;min-width:0;max-width:1100px;padding:16px}
+.bar{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+#menuBtn,#scrim{display:none}
+@media (max-width:800px){
+ #side{position:fixed;left:0;top:0;bottom:0;z-index:30;transform:translateX(-100%);transition:transform .2s;box-shadow:2px 0 12px rgba(0,0,0,.25)}
+ body.menu #side{transform:none}
+ body.menu #scrim{display:block;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:20}
+ #menuBtn{display:inline-block}
+}
 </style>
 </head>
 <body>
@@ -52,13 +66,15 @@ nav button .badge.late{background:var(--bad);color:#fff}
 <div style="display:flex;justify-content:center;margin-bottom:16px"><div class="logo" role="img" aria-label="Setta Papelaria"></div></div>
 <div class="card"><h1 style="font-size:18px">Monitoramento de Pedidos Setta</h1>
 <form id="lform"><label>Usuário</label><input id="lu" autocomplete="username" autocapitalize="none" autocorrect="off"><label>Senha</label><input id="lp" type="password" autocomplete="current-password"><div id="lerr" class="bad" style="min-height:22px;margin-top:8px"></div><button class="fin" type="submit" style="width:100%;margin-top:6px">Entrar</button></form></div></div>
-<div class="wrap" id="app" style="display:none">
-<header><div class="brand"><div class="logo" role="img" aria-label="Setta Papelaria"></div><h1>Monitoramento de Pedidos Setta</h1></div><div class="row"><span class="chip" id="who"></span><button id="out">Sair</button></div></header>
+<div id="app" style="display:none"><div class="shell">
+<aside id="side"><div class="logo" role="img" aria-label="Setta Papelaria"></div><span class="chip" id="who" style="align-self:flex-start"></span><nav id="nav"></nav><button id="out">Sair</button></aside>
+<div id="scrim"></div>
+<section class="content">
+<div class="bar"><button id="menuBtn" aria-label="Abrir menu">☰ Menu</button><h1>Monitoramento de Pedidos Setta</h1></div>
 <input id="busca" type="search" placeholder="🔍 Buscar pedido (nº do pedido ou da NF)" style="margin-bottom:10px">
-<nav id="nav"></nav>
 <main id="main"></main>
 <footer class="foot"><div class="logo" role="img" aria-label="Setta Papelaria"></div></footer>
-</div>
+</section></div></div>
 <div id="toast"></div>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -72,22 +88,25 @@ var EQUIPE=['Abel','Auricelia','Caio','Edmilson','Hebert','Igor','Italu','Junior
 var orders={},tab='novo',filtro='todas',pending=false,mesSel=null,confirmDel=null,editing=null,sinal='+',tipo='NF',draft={num:'',filial:FILIAIS[0],st:'separacao',sep:'',sepo:'',foco:false};
 var busca='',recentes=[];
 /* Cor de cada etapa */
-var COR={separacao:'#2563eb',conferido:'#7c3aed',nf:'#d97706',aguardando:'#ea580c',conferencia:'#0d9488',correcao:'#dc2626',finalizado:'#16a34a'};
+var COR={separacao:'#2563eb',conferido:'#7c3aed',nf:'#d97706',aguardando:'#ea580c',conferencia:'#0d9488',correcao:'#dc2626',finalizado:'#16a34a',andamento:'#1d4ed8'};
 var ETAPAS=['separacao','conferido','nf','aguardando','conferencia','finalizado'];
 /* Aviso de pedido parado: [horas para amarelo, horas para vermelho] em cada etapa */
 var LIMITE={separacao:[2,6],conferido:[1,4],nf:[1,4],aguardando:[8,24],conferencia:[8,24],correcao:[24,72]};
 function horas(o){return (Date.now()-(o.atualizado||o.criado||Date.now()))/36e5}
 function atraso(o){var L=LIMITE[o.status];if(!L)return 0;var h=horas(o);return h>=L[1]?2:h>=L[0]?1:0}
 function idade(o){var h=horas(o);return h<1?'há '+Math.max(1,Math.round(h*60))+' min':h<24?'há '+Math.floor(h)+' h':'há '+Math.floor(h/24)+' d'}
+var NOMES={andamento:'Em andamento',relatorio:'Relatório'};
+var PRIO={conferencia:0,aguardando:1,nf:2,conferido:3,separacao:4,correcao:5};
+function naAba(o,k){return k==='andamento'?o.status!=='finalizado':o.status===k}
 function progresso(o){var i=o.status==='correcao'?4:ETAPAS.indexOf(o.status);return '<div class="prog">'+ETAPAS.map(function(k,n){return '<span style="background:'+(n<=i?COR[o.status]:'var(--bd)')+'"></span>'}).join('')+'</div>'}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function toast(m){var t=document.getElementById('toast');t.textContent=m;t.className='s';setTimeout(function(){t.className=''},2400)}
 function fmt(t){return t?new Date(t).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):''}
 function fmtQ(q){q=+q;return '<span class="'+(q<0?'bad':'okc')+'">'+(q<0?'−':'+')+Math.abs(q)+' un.</span>'}
 function btns(){return isSeparador()?BTN.slice(0,4):BTN}
-function tabs(){if(isEntregador())return['aguardando'];if(isSeparador())return['separacao','conferido','nf','aguardando'];var t=['separacao','conferido','nf','aguardando','conferencia'];if(isAdmin())t.push('correcao');t.push('finalizado');if(isAdmin())t.push('relatorio');return t}
-function list(st){return Object.values(orders).filter(function(o){return o.status===st&&(filtro==='todas'||o.filial===filtro)}).sort(function(a,b){return (b.atualizado||0)-(a.atualizado||0)})}
-function count(st){return Object.values(orders).filter(function(o){return o.status===st}).length}
+function tabs(){if(isEntregador())return['aguardando'];if(isFilial())return['andamento','finalizado'];if(isSeparador())return['separacao','conferido','nf','aguardando'];var t=['separacao','conferido','nf','aguardando','conferencia'];if(isAdmin())t.push('correcao');t.push('finalizado');if(isAdmin())t.push('relatorio');return t}
+function list(st){return Object.values(orders).filter(function(o){return naAba(o,st)&&(filtro==='todas'||o.filial===filtro)}).sort(function(a,b){return (st==='andamento'?(PRIO[a.status]-PRIO[b.status]):0)||((b.atualizado||0)-(a.atualizado||0))})}
+function count(st){return Object.values(orders).filter(function(o){return naAba(o,st)}).length}
 function save(id,patch){
   var o=Object.assign({},orders[id]||{},patch,{id:id,atualizado:Date.now()});
   orders[id]=o;render();
@@ -162,32 +181,32 @@ function relatorio(){
   ms[atual]=1;todos.forEach(function(o){ms[mesChave(o)]=1});
   var mk=mesSel||atual,all=mk==='todos'?todos:todos.filter(function(o){return mesChave(o)===mk});
   var sel='<div class="card row"><span class="mut">Mês:</span><select class="mes" style="max-width:240px">'+Object.keys(ms).sort().reverse().map(function(k){return '<option value="'+k+'"'+(k===mk?' selected':'')+'>'+mesNome(k)+(k===atual?' (atual)':'')+'</option>'}).join('')+'<option value="todos"'+(mk==='todos'?' selected':'')+'>Todos os meses</option></select></div>';
-  function pes(n){n=(n||'').trim();if(!n)return null;var k=n.toLowerCase();return P[k]||(P[k]={nome:n,sep:0,conf:0,emb:0,ent:0,nf:0,esep:0,econf:0,eemb:0})}
+  function pes(n){n=(n||'').trim();if(!n)return null;var k=n.toLowerCase();return P[k]||(P[k]={nome:n,sep:0,conf:0,emb:0,ent:0,nf:0,esep:0,econf:0,eemb:0,ped:{}})}
   function cel(n,e){return '<td><b>'+n+'</b>'+(e?' <span class="bad">· '+e+' erro'+(e>1?'s':'')+'</span>':'')+'</td>'}
   all.forEach(function(o){
     var err=o.correcao===true&&(o.status==='correcao'||o.status==='finalizado'),a;
     if(err)comErro++;
-    if(o.status!=='separacao'&&(a=pes(o.separador))){a.sep++;if(err)a.esep++}
-    if(a=pes(o.conferiu)){a.conf++;if(err)a.econf++}
-    if(a=pes(o.embalou)){a.emb++;if(err)a.eemb++}
-    if(a=pes(o.conferiuEntrega))a.ent++;
-    if(['aguardando','conferencia','correcao','finalizado'].indexOf(o.status)>=0&&(a=pes('Igor')))a.nf++;
+    if(a=pes(o.separador)){a.ped[o.id]=1;if(o.status!=='separacao'){a.sep++;if(err)a.esep++}}
+    if(a=pes(o.conferiu)){a.ped[o.id]=1;a.conf++;if(err)a.econf++}
+    if(a=pes(o.embalou)){a.ped[o.id]=1;a.emb++;if(err)a.eemb++}
+    if(a=pes(o.conferiuEntrega)){a.ped[o.id]=1;a.ent++}
+    if(['aguardando','conferencia','correcao','finalizado'].indexOf(o.status)>=0&&(a=pes('Igor'))){a.ped[o.id]=1;a.nf++}
   });
-  var rows=Object.values(P).sort(function(a,b){return (b.sep+b.conf+b.emb+b.nf+b.ent)-(a.sep+a.conf+a.emb+a.nf+a.ent)});
+  var rows=Object.values(P).sort(function(a,b){return (Object.keys(b.ped).length-Object.keys(a.ped).length)||((b.sep+b.conf+b.emb+b.nf+b.ent)-(a.sep+a.conf+a.emb+a.nf+a.ent))});
   var h=sel+'<div class="card"><b>'+all.length+'</b> pedidos '+(mk==='todos'?'no total':'em '+mesNome(mk))+' · <span class="bad"><b>'+comErro+'</b> com correção</span></div>';
   if(!rows.length)return h+'<div class="empty">Ainda não há atividades registradas.</div>';
-  h+='<div class="card" style="overflow-x:auto"><table><thead><tr><th>Pessoa</th><th>Separações</th><th>Conferências</th><th>Embalagens</th><th>NF</th><th>Conf. de entrega</th><th>Total de participação</th><th>Total de erros</th><th>% de acerto</th></tr></thead><tbody>';
-  rows.forEach(function(p){var te=p.esep+p.econf+p.eemb,tf=p.sep+p.conf+p.emb,pc=tf?(((tf-te)/tf)*100).toFixed(1).replace('.',',')+'%':'—';
-    h+='<tr><td><b>'+esc(p.nome)+'</b></td>'+cel(p.sep,p.esep)+cel(p.conf,p.econf)+cel(p.emb,p.eemb)+'<td><b>'+p.nf+'</b></td><td><b>'+p.ent+'</b></td><td><b>'+(p.sep+p.conf+p.emb+p.nf+p.ent)+'</b></td><td class="'+(te?'bad':'mut')+'"><b>'+te+'</b></td><td><b>'+pc+'</b></td></tr>'});
-  return h+'</tbody></table></div><div class="mut">Erro = pedido que precisou de correção na conferência de entrega, contado para o separador, o conferente e o embalador daquele pedido. % de acerto = (separações + conferências + embalagens − erros) ÷ (separações + conferências + embalagens). Cada pedido conta no mês em que foi cadastrado.</div>';
+  h+='<div class="card" style="overflow-x:auto"><table><thead><tr><th>Pessoa</th><th>Separações</th><th>Conferências</th><th>Embalagens</th><th>NF</th><th>Conf. de entrega</th><th>Total de participação</th><th>Total de erros</th><th>% de acerto</th><th>Pedidos em que atuou</th><th>% de participação</th></tr></thead><tbody>';
+  rows.forEach(function(p){var te=p.esep+p.econf+p.eemb,tf=p.sep+p.conf+p.emb,pc=tf?(((tf-te)/tf)*100).toFixed(1).replace('.',',')+'%':'—',np=Object.keys(p.ped).length,pp=(np/all.length*100).toFixed(1).replace('.',',')+'%';
+    h+='<tr><td><b>'+esc(p.nome)+'</b></td>'+cel(p.sep,p.esep)+cel(p.conf,p.econf)+cel(p.emb,p.eemb)+'<td><b>'+p.nf+'</b></td><td><b>'+p.ent+'</b></td><td><b>'+(p.sep+p.conf+p.emb+p.nf+p.ent)+'</b></td><td class="'+(te?'bad':'mut')+'"><b>'+te+'</b></td><td><b>'+pc+'</b></td><td><b>'+np+'</b> de '+all.length+'</td><td><b>'+pp+'</b></td></tr>'});
+  return h+'</tbody></table></div><div class="mut">Erro = pedido que precisou de correção na conferência de entrega, contado para o separador, o conferente e o embalador daquele pedido. % de acerto = (separações + conferências + embalagens − erros) ÷ (separações + conferências + embalagens). % de participação = pedidos em que a pessoa aparece (separou, conferiu, embalou, NF ou conferiu a entrega) ÷ total de pedidos do período; cada pedido conta uma vez por pessoa, mesmo que ela tenha feito mais de uma função nele. Cada pedido conta no mês em que foi cadastrado.</div>';
 }
 function render(){
   var tl=tabs();
   if(tab==='novo'&&(isFilial()||isEntregador()))tab=tl[0];
   if(tab!=='novo'&&tl.indexOf(tab)<0)tab=tl[0];
   var nav=(isFilial()||isEntregador())?'':'<button data-a="tab" data-v="novo" class="'+(tab==='novo'?'on':'')+'">+ Novo pedido</button>';
-  tl.forEach(function(k){var cr=COR[k],on=tab===k&&!busca,late=Object.values(orders).filter(function(o){return o.status===k&&atraso(o)===2}).length;
-    nav+='<button data-a="tab" data-v="'+k+'" class="'+(on?'on':'')+'"'+(on&&cr?' style="background:'+cr+';border-color:'+cr+';color:#fff"':'')+'>'+(k==='relatorio'?'Relatório':'<i class="dot" style="background:'+cr+'"></i>'+ST[k]+'<span class="badge'+(late?' late':'')+'">'+count(k)+'</span>')+'</button>'});
+  tl.forEach(function(k){var cr=COR[k],on=tab===k&&!busca,late=Object.values(orders).filter(function(o){return naAba(o,k)&&atraso(o)===2}).length;
+    nav+='<button data-a="tab" data-v="'+k+'" class="'+(on?'on':'')+'"'+(on&&cr?' style="background:'+cr+';border-color:'+cr+';color:#fff"':'')+'>'+(k==='relatorio'?'Relatório':'<i class="dot" style="background:'+cr+'"></i>'+(ST[k]||NOMES[k])+'<span class="badge'+(late?' late':'')+'">'+count(k)+'</span>')+'</button>'});
   document.getElementById('nav').innerHTML=nav;
   var m=document.getElementById('main');
   if(busca){var qq=busca.toLowerCase(),rs=Object.values(orders).filter(function(o){return (String(o.numero)+' '+String(o.nfNumero||'')).toLowerCase().indexOf(qq)>=0}).sort(function(a,b){return (b.atualizado||0)-(a.atualizado||0)});m.innerHTML='<div class="mut" style="margin-bottom:8px">Resultados da busca em todas as etapas: '+rs.length+'</div>'+(rs.length?rs.map(card).join(''):'<div class="empty">Nenhum pedido encontrado.</div>');return}
@@ -203,14 +222,15 @@ function render(){
   }
   if(tab==='relatorio'){m.innerHTML=relatorio();return}
   var f=!seeAll()?'':'<div class="filter row"><span class="mut">Filial:</span>'+['todas'].concat(FILIAIS).map(function(x){return '<button data-a="filtro" data-v="'+esc(x)+'" class="'+(filtro===x?'on':'')+'">'+(x==='todas'?'Todas':esc(x))+'</button>'}).join('')+'</div>';
-  var l=list(tab);
-  m.innerHTML=f+(l.length?l.map(card).join(''):'<div class="empty">Nenhum pedido nesta aba.</div>');
+  var l=list(tab),rs0='';
+  if(tab==='andamento'&&l.length)rs0='<div class="row" style="margin-bottom:10px">'+['conferencia','aguardando','nf','conferido','separacao'].map(function(k){var n=l.filter(function(o){return o.status===k}).length;return n?'<span class="chip"><i class="dot" style="background:'+COR[k]+'"></i>'+ST[k]+': <b>'+n+'</b></span>':''}).join('')+'</div>';
+  m.innerHTML=f+rs0+(l.length?l.map(card).join(''):'<div class="empty">'+(tab==='andamento'?'Nenhum pedido em andamento.':'Nenhum pedido nesta aba.')+'</div>');
 }
 document.addEventListener('change',function(e){var s=e.target;if(s.classList&&s.classList.contains('mes')){mesSel=s.value;render();return}if(s.matches&&s.matches('select[data-out]')){var n=s.nextElementSibling;if(n)n.style.display=s.value==='__outro'?'block':'none'}});
 document.addEventListener('click',function(e){
   var b=e.target.closest('[data-a]');if(!b)return;
   var a=b.dataset.a,v=b.dataset.v,c=b.closest('.card'),id=c&&c.dataset.id,o=id&&orders[id];
-  if(a==='tab'){tab=v;confirmDel=null;editing=null;mesSel=null;if(v==='novo')draft.foco=true;if(busca){busca='';document.getElementById('busca').value=''}render()}
+  if(a==='tab'){document.body.classList.remove('menu');tab=v;confirmDel=null;editing=null;mesSel=null;if(v==='novo')draft.foco=true;if(busca){busca='';document.getElementById('busca').value=''}render()}
   else if(a==='filtro'){filtro=v;render()}
   else if(a==='dfilial'||a==='dst'){saveDraft(c);if(a==='dfilial')draft.filial=v;else draft.st=v;render()}
   else if(a==='add'){
@@ -272,6 +292,8 @@ document.addEventListener('click',function(e){
 });
 document.addEventListener('focusout',function(){setTimeout(function(){if(pending&&!document.activeElement.matches('input,select,textarea')){pending=false;render()}},50)});
 document.getElementById('busca').addEventListener('input',function(e){busca=e.target.value.trim();render()});
+document.getElementById('menuBtn').addEventListener('click',function(){document.body.classList.toggle('menu')});
+document.getElementById('scrim').addEventListener('click',function(){document.body.classList.remove('menu')});
 document.addEventListener('keydown',function(e){if(e.key==='Enter'&&e.target.id==='num'){var bt=document.querySelector('[data-a="add"]');if(bt)bt.click()}});
 var firebaseConfig={
   apiKey:"AIzaSyDUbRGy8MVkeuUyKWuKEDi5lOqPERbvoUc",
@@ -316,7 +338,7 @@ onAuthStateChanged(auth,function(user){
   document.getElementById('login').style.display='none';
   document.getElementById('app').style.display='block';
   document.getElementById('who').textContent=role==='admin'?'Administrador':(role==='separador'?'Separação':(role==='entregador'?'Entregador':me.filial));
-  tab=(role==='filial'||role==='entregador')?'aguardando':'novo';filtro='todas';render();
+  tab=role==='entregador'?'aguardando':(role==='filial'?'andamento':'novo');filtro='todas';render();
   var col=collection(fdb,'pedidos_setta');
   var q=role==='admin'?col:(role==='entregador'?query(col,where('status','==','aguardando')):role==='separador'?query(col,where('status','in',['separacao','conferido','nf','aguardando'])):query(col,where('filial','==',me.filial),where('status','in',['separacao','conferido','nf','aguardando','conferencia','finalizado'])));
   unsub=onSnapshot(q,function(s){
