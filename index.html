@@ -95,6 +95,7 @@ var LIMITE={separacao:[2,6],conferido:[1,4],nf:[1,4],aguardando:[8,24],conferenc
 function horas(o){return (Date.now()-(o.atualizado||o.criado||Date.now()))/36e5}
 function atraso(o){var L=LIMITE[o.status];if(!L)return 0;var h=horas(o);return h>=L[1]?2:h>=L[0]?1:0}
 function idade(o){var h=horas(o);return h<1?'há '+Math.max(1,Math.round(h*60))+' min':h<24?'há '+Math.floor(h)+' h':'há '+Math.floor(h/24)+' d'}
+function dur(o){if(!o.criado||!o.finalizadoEm)return '';var m=Math.round((o.finalizadoEm-o.criado)/6e4);if(m<60)return m+' min';var h=Math.floor(m/60);if(h<24)return h+' h '+('0'+(m%60)).slice(-2)+' min';var d=Math.floor(h/24);return d+' d '+(h%24)+' h'}
 var NOMES={andamento:'Em andamento',relatorio:'Relatório'};
 var PRIO={conferencia:0,aguardando:1,nf:2,conferido:3,separacao:4,correcao:5};
 function naAba(o,k){return k==='andamento'?o.status!=='finalizado':o.status===k}
@@ -165,7 +166,7 @@ function editForm(o){
 function card(o){
   var ed=isAdmin()&&editing===o.id;
   var cor=COR[o.status]||'var(--bd)',at=atraso(o);
-  var h='<div class="card" data-id="'+esc(o.id)+'" style="border-left:5px solid '+cor+'"><div class="top"><div><span class="num">Pedido '+esc(o.numero)+'</span><span class="tag">'+esc(o.filial)+'</span><div class="mut">'+(o.status==='finalizado'?'✔ Finalizado '+fmt(o.finalizadoEm):'Atualizado '+fmt(o.atualizado)+(at?' · <span style="color:var('+(at===2?'--bad':'--warn')+');font-weight:600">⏱ '+idade(o)+' nesta etapa</span>':' · '+idade(o)))+'</div></div><span class="pill" style="background:'+cor+'">'+esc(ST[o.status]||o.status)+'</span></div>'+progresso(o);
+  var h='<div class="card" data-id="'+esc(o.id)+'" style="border-left:5px solid '+cor+'"><div class="top"><div><span class="num">Pedido '+esc(o.numero)+'</span><span class="tag">'+esc(o.filial)+'</span><div class="mut">'+(o.status==='finalizado'?'✔ Finalizado '+fmt(o.finalizadoEm)+(dur(o)?' · ⏱ Tempo total: <b>'+dur(o)+'</b>':''):'Atualizado '+fmt(o.atualizado)+(at?' · <span style="color:var('+(at===2?'--bad':'--warn')+');font-weight:600">⏱ '+idade(o)+' nesta etapa</span>':' · '+idade(o)))+'</div></div><span class="pill" style="background:'+cor+'">'+esc(ST[o.status]||o.status)+'</span></div>'+progresso(o);
   if(ed)return h+editForm(o)+'</div>';
   h+=infoLine(o);
   if(o.status==='finalizado'||o.status==='correcao'){h+=(o.correcao?'<div class="bad">Houve correção:</div>':'<div class="mut">Sem correções.</div>')+itensHtml(o,false)+(o.obs?'<div style="margin:6px 0"><span class="mut">Observação:</span> '+esc(o.obs)+'</div>':'')}
@@ -194,6 +195,8 @@ function relatorio(){
   });
   var rows=Object.values(P).sort(function(a,b){return (Object.keys(b.ped).length-Object.keys(a.ped).length)||((b.sep+b.conf+b.emb+b.nf+b.ent)-(a.sep+a.conf+a.emb+a.nf+a.ent))});
   var h=sel+'<div class="card"><b>'+all.length+'</b> pedidos '+(mk==='todos'?'no total':'em '+mesNome(mk))+' · <span class="bad"><b>'+comErro+'</b> com correção</span></div>';
+  var tt=all.filter(function(o){return o.status==='finalizado'&&o.criado&&o.finalizadoEm}).map(function(o){return o.finalizadoEm-o.criado});
+  if(tt.length){var mm=function(ms){return dur({criado:0,finalizadoEm:ms})};h+='<div class="card">⏱ Tempo do pedido (cadastro → finalizado), em <b>'+tt.length+'</b> pedidos finalizados: média <b>'+mm(tt.reduce(function(a,b){return a+b},0)/tt.length)+'</b> · mais rápido <b>'+mm(Math.min.apply(null,tt))+'</b> · mais demorado <b>'+mm(Math.max.apply(null,tt))+'</b></div>'}
   if(!rows.length)return h+'<div class="empty">Ainda não há atividades registradas.</div>';
   h+='<div class="card" style="overflow-x:auto"><table><thead><tr><th>Pessoa</th><th>Separações</th><th>Conferências</th><th>Embalagens</th><th>NF</th><th>Conf. de entrega</th><th>Total de participação</th><th>Total de erros</th><th>% de acerto</th><th>Pedidos em que atuou</th><th>% de participação</th></tr></thead><tbody>';
   rows.forEach(function(p){var te=p.esep+p.econf+p.eemb,tf=p.sep+p.conf+p.emb,pc=tf?(((tf-te)/tf)*100).toFixed(1).replace('.',',')+'%':'—',np=Object.keys(p.ped).length,pp=(np/all.length*100).toFixed(1).replace('.',',')+'%';
