@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Monitoramento de Pedidos Setta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--logo:url(data:image/png;base64,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);--bg:#f6f7f9;--card:#fff;--tx:#1a1d21;--mut:#6b7280;--bd:#e2e5ea;--ac:#1d4ed8;--acx:#fff;--ok:#15803d;--warn:#b45309;--bad:#b91c1c;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -70,6 +72,39 @@ nav button .badge.late{background:var(--bad);color:#fff}
 .escolha button.ok.on{background:var(--ok);border-color:var(--ok);color:#fff}
 .escolha button.nok.on{background:var(--bad);border-color:var(--bad);color:#fff}
 nav button .badge.acaoB{background:#ea580c;color:#fff;animation:pulso 1.8s infinite}
+/* ===== Visual refinado ===== */
+:root{--sh:0 1px 2px rgba(16,24,40,.05),0 6px 18px rgba(16,24,40,.07)}
+body{font-family:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:radial-gradient(1100px 480px at 90% -10%,rgba(29,78,216,.09),transparent 60%),var(--bg)}
+#side{background:#15171b;border-right:0;padding:18px 14px}
+#side .chip{color:#aeb4bd;border-color:#2c3037;background:transparent}
+#side nav button{background:transparent;border:0;color:#c3c8d0;padding:10px 12px;border-radius:10px;font-weight:500}
+#side nav button:hover{background:rgba(255,255,255,.07)}
+#side nav button.on{background:var(--ac);color:#fff;font-weight:600}
+#side nav .badge{background:rgba(255,255,255,.14);color:#fff}
+#side nav .badge.late{background:var(--bad)}
+#side nav .badge.acaoB{background:#ea580c}
+.topbar{position:sticky;top:0;z-index:10;margin:-16px -16px 16px;padding:12px 16px;background:color-mix(in srgb,var(--bg) 85%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd)}
+.hello{flex:1;min-width:0}
+.hello h1{font-size:18px;font-weight:700;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.saud{display:block;font-size:13px;font-weight:600;color:var(--mut);margin-bottom:2px}
+.sair{border-radius:99px;padding:8px 18px;font-weight:600;color:var(--bad);border-color:color-mix(in srgb,var(--bad) 40%,var(--bd))}
+.sair:hover{background:var(--bad);color:#fff;border-color:var(--bad)}
+#menuBtn{padding:8px 12px;font-size:18px;line-height:1}
+.card{border-radius:16px;box-shadow:var(--sh);padding:16px 18px}
+.pill{padding:4px 12px}
+.prog span{height:6px}
+.avisoacao{border-radius:14px}
+button{border-radius:10px;font-weight:600;transition:background .15s,border-color .15s,transform .08s}
+button:hover{border-color:var(--ac)}
+button:active{transform:scale(.98)}
+button.fin{box-shadow:0 2px 8px color-mix(in srgb,var(--ok) 35%,transparent)}
+input,select,textarea{border-radius:10px;padding:10px 12px}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--ac);box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 22%,transparent)}
+:focus-visible{outline:3px solid color-mix(in srgb,var(--ac) 45%,transparent);outline-offset:2px}
+th{background:color-mix(in srgb,var(--bd) 35%,transparent);font-weight:600}
+tbody tr:hover{background:color-mix(in srgb,var(--bd) 25%,transparent)}
+#login .card{padding:26px;box-shadow:0 12px 40px rgba(16,24,40,.14)}
+@media (prefers-reduced-motion:reduce){.acao,nav button .badge.acaoB{animation:none}}
 </style>
 </head>
 <body>
@@ -78,10 +113,10 @@ nav button .badge.acaoB{background:#ea580c;color:#fff;animation:pulso 1.8s infin
 <div class="card"><h1 style="font-size:18px">Monitoramento de Pedidos Setta</h1>
 <form id="lform"><label>Usuário</label><input id="lu" autocomplete="username" autocapitalize="none" autocorrect="off"><label>Senha</label><input id="lp" type="password" autocomplete="current-password"><div id="lerr" class="bad" style="min-height:22px;margin-top:8px"></div><button class="fin" type="submit" style="width:100%;margin-top:6px">Entrar</button></form></div></div>
 <div id="app" style="display:none"><div class="shell">
-<aside id="side"><div class="logo" role="img" aria-label="Setta Papelaria"></div><span class="chip" id="who" style="align-self:flex-start"></span><nav id="nav"></nav><button id="out">Sair</button></aside>
+<aside id="side"><div class="logo" role="img" aria-label="Setta Papelaria"></div><span class="chip" id="who" style="align-self:flex-start"></span><nav id="nav"></nav></aside>
 <div id="scrim"></div>
 <section class="content">
-<div class="bar"><button id="menuBtn" aria-label="Abrir menu">☰ Menu</button><h1>Monitoramento de Pedidos Setta</h1></div>
+<div class="bar topbar"><button id="menuBtn" aria-label="Abrir menu">☰</button><div class="hello"><span id="saud" class="saud"></span><h1>Monitoramento de Pedidos Setta</h1></div><button id="out" class="sair">Sair</button></div>
 <input id="busca" type="search" placeholder="🔍 Buscar pedido (nº do pedido ou da NF)" style="margin-bottom:10px">
 <main id="main"></main>
 <footer class="foot"><div class="logo" role="img" aria-label="Setta Papelaria"></div></footer>
@@ -215,7 +250,16 @@ function relatorio(){
     h+='<tr><td><b>'+esc(p.nome)+'</b></td>'+cel(p.sep,p.esep)+cel(p.conf,p.econf)+cel(p.emb,p.eemb)+'<td><b>'+p.nf+'</b></td><td><b>'+p.ent+'</b></td><td><b>'+(p.sep+p.conf+p.emb+p.nf+p.ent)+'</b></td><td class="'+(te?'bad':'mut')+'"><b>'+te+'</b></td><td><b>'+pc+'</b></td><td><b>'+np+'</b> de '+all.length+'</td><td><b>'+pp+'</b></td></tr>'});
   return h+'</tbody></table></div><div class="mut">Erro = pedido que precisou de correção na conferência de entrega, contado para o separador, o conferente e o embalador daquele pedido. % de acerto = (separações + conferências + embalagens − erros) ÷ (separações + conferências + embalagens). % de participação = pedidos em que a pessoa aparece (separou, conferiu, embalou, NF ou conferiu a entrega) ÷ total de pedidos do período; cada pedido conta uma vez por pessoa, mesmo que ela tenha feito mais de uma função nele. Cada pedido conta no mês em que foi cadastrado.</div>';
 }
-function render(){
+function atualizaSaudacao(){
+  if(!me)return;
+  var h=new Date().getHours(),
+      t=h>=5&&h<12?['☀️','Bom dia']:h>=12&&h<18?['🌤️','Boa tarde']:['🌙','Boa noite'],
+      n=me.role==='admin'?(me.user==='hebert'?'Hebert':'Administrador'):me.role==='separador'?'equipe de Separação':me.role==='entregador'?'Entregador':me.filial,
+      el=document.getElementById('saud');
+  if(el)el.textContent=t[0]+' '+t[1]+', '+n+'!';
+}
+setInterval(atualizaSaudacao,60000);
+function render(){atualizaSaudacao();
   var tl=tabs();
   if(tab==='novo'&&(isFilial()||isEntregador()))tab=tl[0];
   if(tab!=='novo'&&tl.indexOf(tab)<0)tab=tl[0];
