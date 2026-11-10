@@ -111,7 +111,7 @@ var NOMES={andamento:'Em andamento',relatorio:'Relatório'};
 var PRIO={conferencia:0,aguardando:1,nf:2,conferido:3,separacao:4,correcao:5};
 function naAba(o,k){return k==='andamento'?o.status!=='finalizado':o.status===k}
 function minhaAcao(o){return isFilial()&&(o.status==='aguardando'||o.status==='conferencia')}
-function aviso(o){if(!minhaAcao(o))return '';var t=o.status==='aguardando'?['📦','Seu pedido chegou?','Conte os volumes e toque em “Recebi o pedido”.']:['🔍','Hora de conferir!','Veja se está tudo certo e finalize a conferência.'];return '<div class="avisoacao"><span class="ic">'+t[0]+'</span><div>'+t[1]+'<small>'+t[2]+'</small></div></div>'}
+function aviso(o){if(!minhaAcao(o))return '';var t=o.status==='aguardando'?['📦','Seu pedido chegou?','Toque em “Recebi o pedido” quando ele chegar.']:['🔍','Hora de conferir!','Veja se está tudo certo e finalize a conferência.'];return '<div class="avisoacao"><span class="ic">'+t[0]+'</span><div>'+t[1]+'<small>'+t[2]+'</small></div></div>'}
 function progresso(o){var i=o.status==='correcao'?4:ETAPAS.indexOf(o.status);return '<div class="prog">'+ETAPAS.map(function(k,n){return '<span style="background:'+(n<=i?COR[o.status]:'var(--bd)')+'"></span>'}).join('')+'</div>'}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function toast(m){var t=document.getElementById('toast');t.textContent=m;t.className='s';setTimeout(function(){t.className=''},2400)}
@@ -153,7 +153,6 @@ function confEntrega(o){
     h+='<div class="add"><input class="p" placeholder="Nº do produto"><input class="q" type="number" min="1" placeholder="Qtd"><button data-a="item">Adicionar</button></div>';
     h+='<label>Observação (o que precisa ser feito)</label><textarea class="ob" rows="3">'+esc(o.obs||'')+'</textarea>';
   }
-  h+='<label>Conferido por (nome)</label><input class="ce" value="'+esc(o.conferiuEntrega||'')+'">';
   return h+'<div style="margin-top:12px"><button class="fin big" data-a="finent">🏁 Finalizar conferência</button></div>';
 }
 function actions(o){
@@ -161,7 +160,7 @@ function actions(o){
   if(s==='separacao'&&(ad||sp))return '<button class="fin" data-a="finsep">Finalizada a separação</button>';
   if(s==='conferido'&&(ad||sp))return '<div style="max-width:160px"><label>Volumes</label><input class="vol" type="number" min="1" value="'+esc(o.volumes||'')+'"></div>'+nameSel('cf',EQUIPE,'Conferido por:')+nameSel('em',EQUIPE,'Embalado por:')+'<div style="margin-top:12px"><button class="fin" data-a="finconf">Finalizada a conferência</button></div>';
   if(s==='nf'&&ad)return '<div style="max-width:220px"><label>Número da NF</label><input class="nfn" inputmode="numeric" value="'+esc(o.nfNumero||'')+'"></div><div style="margin-top:12px"><button class="fin" data-a="finnf">NF emitida</button></div>';
-  if(s==='aguardando'&&(ad||fi))return '<label>📦 Quantos volumes você recebeu?</label><input class="volr" type="number" min="0" inputmode="numeric" style="max-width:200px;font-size:20px"><div style="margin-top:12px"><button class="fin big" data-a="entregue">✅ Recebi o pedido</button></div>';
+  if(s==='aguardando'&&(ad||fi))return '<div style="margin-top:4px"><button class="fin big" data-a="entregue">✅ Recebi o pedido</button></div>';
   if(s==='conferencia'&&(ad||fi))return confEntrega(o);
   if(s==='correcao'&&ad)return '<button class="fin" data-a="aprovar">Aprovar correção e finalizar</button>';
   return '';
@@ -271,9 +270,7 @@ document.addEventListener('click',function(e){
   }
   else if(a==='finnf'&&o){var nfn=c.querySelector('.nfn').value.trim();if(!nfn){toast('Digite o número da NF');return}save(id,{nfNumero:nfn,status:'aguardando'});toast('Enviado para Aguardando Entrega')}
   else if(a==='entregue'&&o){
-    var vr=c.querySelector('.volr').value.trim();
-    if(vr===''||+vr<0){toast('Informe quantos volumes recebeu');return}
-    save(id,{volRecebidos:vr,status:'conferencia'});toast('🎉 Recebimento confirmado! Agora confira o pedido.');
+    save(id,{status:'conferencia'});toast('🎉 Recebimento confirmado! Agora confira o pedido.');
   }
   else if(a==='corr'&&o){save(id,Object.assign(collect(c),{correcao:v==='1'}))}
   else if(a==='tipo'){tipo=v;c.querySelectorAll('[data-a="tipo"]').forEach(function(x){x.classList.toggle('on',x.dataset.v===v)})}
@@ -286,7 +283,6 @@ document.addEventListener('click',function(e){
   else if(a==='del'&&o){var it=(o.itens||[]).slice();it.splice(+v,1);save(id,Object.assign(collect(c),{itens:it}))}
   else if(a==='finent'&&o){
     var pp=collect(c);
-    if(!pp.conferiuEntrega){toast('Informe quem conferiu');return}
     if(o.correcao&&!(o.itens||[]).length&&!pp.obs){toast('Informe o item ou a observação da correção');return}
     pp.status=o.correcao?'correcao':'finalizado';
     if(pp.status==='finalizado')pp.finalizadoEm=Date.now();
