@@ -1,0 +1,134 @@
+/* ==================================================================
+   estilo.css — visual do sistema
+   As cores principais ficam nas variáveis do começo (--bg, --ac, --ok...).
+   O que está mais abaixo, em "Topo nas cores da logo da Setta", tem
+   prioridade sobre o que vem antes.
+   ================================================================== */
+
+/* ---------- Cores base (modo claro) ---------- */
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1a1d21;--mut:#6b7280;--bd:#e2e5ea;--ac:#1d4ed8;--acx:#fff;--ok:#15803d;--warn:#b45309;--bad:#b91c1c;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+/* ---------- Modo escuro ---------- */
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#14161a;--card:#1e2126;--tx:#eceef1;--mut:#9aa1ab;--bd:#2f343b;--ac:#6b9bff;--acx:#0b1220;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#14161a;--card:#1e2126;--tx:#eceef1;--mut:#9aa1ab;--bd:#2f343b;--ac:#6b9bff;--acx:#0b1220;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171}
+
+/* ---------- Base ---------- */
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:16px}
+.brand{display:flex;align-items:center;gap:12px}
+/* Logo: o arquivo logo.png fica na mesma pasta; para trocar a logo, troque o arquivo */
+.logo{width:132px;aspect-ratio:300/105;padding:7px;box-sizing:content-box;background:#17191d url(logo.png) center/contain no-repeat;background-origin:content-box;border-radius:10px}
+.foot{display:flex;justify-content:flex-end;margin-top:24px}
+header{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+h1{font-size:20px;margin:0}.chip{font-size:12px;color:var(--mut);border:1px solid var(--bd);border-radius:99px;padding:2px 10px}
+nav{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:12px}
+nav button{white-space:nowrap}
+
+/* ---------- Botões e campos ---------- */
+button,input,select,textarea{font:inherit;color:inherit}
+button{border:1px solid var(--bd);background:var(--card);border-radius:8px;padding:7px 12px;cursor:pointer}
+button.on{background:var(--ac);color:var(--acx);border-color:var(--ac)}
+button.fin{background:var(--ok);color:#fff;border-color:var(--ok)}
+button.danger{color:var(--bad);border-color:var(--bad)}
+button.dangerx{background:var(--bad);color:#fff;border-color:var(--bad)}
+.badge{display:inline-block;min-width:18px;margin-left:6px;padding:0 6px;border-radius:99px;background:var(--bd);font-size:12px}
+nav button.on .badge{background:rgba(255,255,255,.25)}
+input,select,textarea{border:1px solid var(--bd);background:var(--card);border-radius:8px;padding:8px 10px;width:100%}
+
+/* ---------- Cartões de pedido ---------- */
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:10px}
+.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.num{font-weight:700;font-size:17px}.mut{color:var(--mut);font-size:13px}
+label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
+.filter{margin-bottom:10px}.empty{text-align:center;color:var(--mut);padding:28px 0}
+table{border-collapse:collapse;width:100%;min-width:640px}th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--bd)}th{font-size:12px;color:var(--mut)}.item{display:flex;justify-content:space-between;border-top:1px dashed var(--bd);padding:6px 0}
+.item button{padding:2px 8px}.bad{color:var(--bad)}.okc{color:var(--ok)}
+.add{display:grid;grid-template-columns:2fr 1fr auto;gap:6px;margin-top:8px}
+.sg{margin-top:8px}.sg button{min-width:84px}
+#toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:8px 14px;border-radius:8px;opacity:0;transition:.2s;pointer-events:none}
+#toast.s{opacity:1}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:99px;border:1px solid var(--bd);color:var(--mut);margin-left:8px;vertical-align:middle}
+.pill{color:#fff;font-size:12px;font-weight:600;padding:3px 10px;border-radius:99px;white-space:nowrap;align-self:flex-start}
+.prog{display:flex;gap:3px;margin:4px 0 10px}.prog span{flex:1;height:5px;border-radius:3px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+nav button .badge.late{background:var(--bad);color:#fff}
+.card button.fin{padding:10px 16px;font-weight:600}
+@media (max-width:600px){.card button.fin{width:100%}}
+
+/* ---------- Menu lateral e estrutura da página ---------- */
+.shell{display:flex;min-height:100vh}
+#side{width:250px;flex:none;background:var(--card);border-right:1px solid var(--bd);padding:14px;display:flex;flex-direction:column;gap:10px;position:sticky;top:0;height:100vh;overflow-y:auto}
+#side nav{flex-direction:column;overflow:visible;padding:0;margin:0;flex:1;gap:4px}
+#side nav button{text-align:left;width:100%;display:flex;align-items:center}
+#side nav button .badge{margin-left:auto}
+.content{flex:1;min-width:0;max-width:1100px;padding:16px}
+.bar{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+#menuBtn,#scrim{display:none}
+@media (max-width:800px){
+ #side{position:fixed;left:0;top:0;bottom:0;z-index:30;transform:translateX(-100%);transition:transform .2s;box-shadow:2px 0 12px rgba(0,0,0,.25)}
+ body.menu #side{transform:none}
+ body.menu #scrim{display:block;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:20}
+ #menuBtn{display:inline-block}
+}
+
+/* ---------- Destaques para as lojas ---------- */
+@keyframes pulso{0%,100%{box-shadow:0 0 0 0 rgba(234,88,12,.5)}50%{box-shadow:0 0 0 10px rgba(234,88,12,0)}}
+.acao{border-color:var(--wc);animation:pulso 1.8s infinite}
+.avisoacao{display:flex;gap:12px;align-items:center;background:var(--wc);color:#fff;border-radius:10px;padding:10px 12px;margin:-4px 0 12px;font-weight:700}
+.avisoacao .ic{font-size:28px}.avisoacao small{display:block;font-weight:400}
+.sec{font-weight:700;margin:16px 0 8px}
+.card button.big{width:100%;padding:16px;font-size:17px;font-weight:700;border-radius:12px}
+.escolha{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.escolha button{padding:16px 8px;font-size:16px;font-weight:700;border-radius:12px;border-width:2px}
+.escolha button.ok.on{background:var(--ok);border-color:var(--ok);color:#fff}
+.escolha button.nok.on{background:var(--bad);border-color:var(--bad);color:#fff}
+nav button .badge.acaoB{background:#ea580c;color:#fff;animation:pulso 1.8s infinite}
+
+/* ---------- Visual refinado ---------- */
+:root{--sh:0 1px 2px rgba(16,24,40,.05),0 6px 18px rgba(16,24,40,.07)}
+body{font-family:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:radial-gradient(1100px 480px at 90% -10%,rgba(29,78,216,.09),transparent 60%),var(--bg)}
+#side{background:#15171b;border-right:0;padding:18px 14px}
+#side .chip{color:#aeb4bd;border-color:#2c3037;background:transparent}
+#side nav button{background:transparent;border:0;color:#c3c8d0;padding:10px 12px;border-radius:10px;font-weight:500}
+#side nav button:hover{background:rgba(255,255,255,.07)}
+#side nav button.on{background:var(--ac);color:#fff;font-weight:600}
+#side nav .badge{background:rgba(255,255,255,.14);color:#fff}
+#side nav .badge.late{background:var(--bad)}
+#side nav .badge.acaoB{background:#ea580c}
+.topbar{position:sticky;top:0;z-index:10;margin:-16px -16px 16px;padding:12px 16px;background:color-mix(in srgb,var(--bg) 85%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd)}
+.hello{flex:1;min-width:0}
+.hello h1{font-size:18px;font-weight:700;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.saud{display:block;font-size:13px;font-weight:600;color:var(--mut);margin-bottom:2px}
+.sair{border-radius:99px;padding:8px 18px;font-weight:600;color:var(--bad);border-color:color-mix(in srgb,var(--bad) 40%,var(--bd))}
+.sair:hover{background:var(--bad);color:#fff;border-color:var(--bad)}
+#menuBtn{padding:8px 12px;font-size:18px;line-height:1}
+.card{border-radius:16px;box-shadow:var(--sh);padding:16px 18px}
+.pill{padding:4px 12px}
+.prog span{height:6px}
+.avisoacao{border-radius:14px}
+button{border-radius:10px;font-weight:600;transition:background .15s,border-color .15s,transform .08s}
+button:hover{border-color:var(--ac)}
+button:active{transform:scale(.98)}
+button.fin{box-shadow:0 2px 8px color-mix(in srgb,var(--ok) 35%,transparent)}
+input,select,textarea{border-radius:10px;padding:10px 12px}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--ac);box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 22%,transparent)}
+:focus-visible{outline:3px solid color-mix(in srgb,var(--ac) 45%,transparent);outline-offset:2px}
+th{background:color-mix(in srgb,var(--bd) 35%,transparent);font-weight:600}
+tbody tr:hover{background:color-mix(in srgb,var(--bd) 25%,transparent)}
+#login .card{padding:26px;box-shadow:0 12px 40px rgba(16,24,40,.14)}
+@media (prefers-reduced-motion:reduce){.acao,nav button .badge.acaoB{animation:none}}
+
+/* ---------- Topo nas cores da logo da Setta (azul #005CA8 e amarelo #FFF80B) ---------- */
+:root{--ac:#005ca8;--sy:#fff80b}
+body{background:radial-gradient(1100px 480px at 90% -10%,rgba(0,92,168,.12),transparent 60%),var(--bg)}
+#side{background:linear-gradient(180deg,#00467f 0%,#0a2540 100%);border-top:4px solid var(--sy)}
+#side nav button.on{background:var(--sy);color:#00305c}
+.topbar{background:linear-gradient(120deg,#0a4f8f 0%,#005ca8 55%,#0b6fc4 100%);border-bottom:4px solid var(--sy);border-radius:0 0 20px 20px;margin:-16px -16px 18px;padding:16px 20px;box-shadow:0 10px 28px rgba(0,92,168,.30);-webkit-backdrop-filter:none;backdrop-filter:none}
+.topbar .saud{color:var(--sy);font-weight:700;letter-spacing:.2px}
+.topbar h1{color:#fff;font-size:20px}
+.topbar #menuBtn{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.35)}
+.topbar .sair{background:transparent;color:#fff;border-color:rgba(255,255,255,.6)}
+.topbar .sair:hover{background:var(--sy);color:#00305c;border-color:var(--sy)}
+@media (max-width:600px){.topbar{padding:12px 14px}.topbar h1{font-size:16px}}
