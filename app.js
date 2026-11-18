@@ -7,7 +7,7 @@
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {getFirestore,collection,query,where,onSnapshot,doc,setDoc,deleteDoc} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import {firebaseConfig,DOMINIO as DOM,PAPEIS,USUARIOS_FILIAL as MAP,FILIAIS,ROTULO_PAPEL,SAUDACAO,RESP_NF,EMISSORES_NF,SEPS,EQUIPE,ST,BTN,NOMES,ETAPAS,COR,LIMITE} from "./config.js?v=1";
+import {firebaseConfig,DOMINIO as DOM,PAPEIS,USUARIOS_FILIAL as MAP,FILIAIS,ROTULO_PAPEL,SAUDACAO,RESP_NF,EMISSORES_NF,SEPS,EQUIPE,ST,BTN,NOMES,ETAPAS,COR,LIMITE} from "./config.js?v=2";
 
 /* ============ ESTADO DA TELA ============ */
 var orders={},tab='novo',filtro='todas',pending=false,mesSel=null,confirmDel=null,editing=null,sinal='+',tipo='NF',draft={num:'',filial:FILIAIS[0],st:'separacao',sep:'',sepo:'',foco:false};
