@@ -7,7 +7,7 @@
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {getFirestore,collection,query,where,onSnapshot,doc,setDoc,deleteDoc} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import {firebaseConfig,DOMINIO as DOM,PAPEIS,USUARIOS_FILIAL as MAP,FILIAIS,ROTULO_PAPEL,SAUDACAO,RESP_NF,SEPS,EQUIPE,ST,BTN,NOMES,ETAPAS,COR,LIMITE} from "./config.js?v=1";
+import {firebaseConfig,DOMINIO as DOM,PAPEIS,USUARIOS_FILIAL as MAP,FILIAIS,ROTULO_PAPEL,SAUDACAO,RESP_NF,EMISSORES_NF,SEPS,EQUIPE,ST,BTN,NOMES,ETAPAS,COR,LIMITE} from "./config.js?v=1";
 
 /* ============ ESTADO DA TELA ============ */
 var orders={},tab='novo',filtro='todas',pending=false,mesSel=null,confirmDel=null,editing=null,sinal='+',tipo='NF',draft={num:'',filial:FILIAIS[0],st:'separacao',sep:'',sepo:'',foco:false};
@@ -57,7 +57,7 @@ function infoLine(o){var p=[];
   if(o.volumes)p.push('Volumes: <b>'+esc(o.volumes)+'</b>');
   if(o.conferiu)p.push('Conferiu: <b>'+esc(o.conferiu)+'</b>');
   if(o.embalou)p.push('Embalou: <b>'+esc(o.embalou)+'</b>');
-  if(o.nfNumero)p.push('NF: <b>'+esc(o.nfNumero)+'</b>');
+  if(o.nfNumero)p.push('NF: <b>'+esc(o.nfNumero)+'</b>'+(o.nfPor?' (por '+esc(o.nfPor)+')':''));
   if(o.volRecebidos!==undefined&&o.volRecebidos!=='')p.push('Volumes recebidos: <b>'+esc(o.volRecebidos)+'</b>');
   if(o.conferiuEntrega)p.push('Conf. de entrega: <b>'+esc(o.conferiuEntrega)+'</b>');
   return p.length?'<div class="mut" style="margin-bottom:6px">'+p.join(' · ')+'</div>':''}
@@ -77,7 +77,7 @@ function actions(o){
   var s=o.status,ad=isAdmin(),sp=isSeparador(),fi=isFilial();
   if(s==='separacao'&&(ad||sp))return '<button class="fin" data-a="finsep">Finalizada a separação</button>';
   if(s==='conferido'&&(ad||sp))return '<div style="max-width:160px"><label>Volumes</label><input class="vol" type="number" min="1" value="'+esc(o.volumes||'')+'"></div>'+nameSel('cf',EQUIPE,'Conferido por:')+nameSel('em',EQUIPE,'Embalado por:')+'<div style="margin-top:12px"><button class="fin" data-a="finconf">Finalizada a conferência</button></div>';
-  if(s==='nf'&&ad)return '<div style="max-width:220px"><label>Número da NF</label><input class="nfn" inputmode="numeric" value="'+esc(o.nfNumero||'')+'"></div><div style="margin-top:12px"><button class="fin" data-a="finnf">NF emitida</button></div>';
+  if(s==='nf'&&ad)return '<div style="max-width:220px"><label>Número da NF</label><input class="nfn" inputmode="numeric" value="'+esc(o.nfNumero||'')+'"><label>NF emitida por:</label><select class="nfp" data-out="1">'+EMISSORES_NF.map(function(n){return '<option'+(n===(o.nfPor||EMISSORES_NF[0])?' selected':'')+'>'+n+'</option>'}).join('')+'<option value="__outro">Outro</option></select><input class="nfpo" placeholder="Nome" style="display:none;margin-top:6px"></div><div style="margin-top:12px"><button class="fin" data-a="finnf">NF emitida</button></div>';
   if(s==='aguardando'&&(ad||fi))return '<div style="margin-top:4px"><button class="fin big" data-a="entregue">✅ Recebi o pedido</button></div>';
   if(s==='conferencia'&&(ad||fi))return confEntrega(o);
   if(s==='correcao'&&ad)return '<button class="fin" data-a="aprovar">Aprovar correção e finalizar</button>';
@@ -88,7 +88,7 @@ function editForm(o){
   var h='<div class="row"><div style="flex:1;min-width:130px"><label>Número</label><input class="e_numero" value="'+esc(o.numero)+'"></div>'+
    '<div style="flex:1;min-width:160px"><label>Filial</label><select class="e_filial">'+FILIAIS.map(function(x){return opt(x,o.filial)}).join('')+'</select></div>'+
    '<div style="flex:1;min-width:170px"><label>Status</label><select class="e_status">'+Object.keys(ST).map(function(k){return opt(k,o.status,ST[k])}).join('')+'</select></div></div>';
-  [['separador','Separador'],['volumes','Volumes'],['conferiu','Conferido por'],['embalou','Embalado por'],['nfNumero','Número da NF'],['volRecebidos','Volumes recebidos'],['conferiuEntrega','Conferência de entrega por']].forEach(function(x){h+='<label>'+x[1]+'</label><input class="e_'+x[0]+'" value="'+esc(o[x[0]])+'">'});
+  [['separador','Separador'],['volumes','Volumes'],['conferiu','Conferido por'],['embalou','Embalado por'],['nfNumero','Número da NF'],['nfPor','NF emitida por'],['volRecebidos','Volumes recebidos'],['conferiuEntrega','Conferência de entrega por']].forEach(function(x){h+='<label>'+x[1]+'</label><input class="e_'+x[0]+'" value="'+esc(o[x[0]])+'">'});
   h+='<label>Precisa de correção?</label><select class="e_correcao">'+opt('0',o.correcao?'1':'0','Não')+opt('1',o.correcao?'1':'0','Sim')+'</select>';
   h+=itensHtml(o,true)+'<label>Observação</label><textarea class="e_obs" rows="3">'+esc(o.obs||'')+'</textarea>';
   return h+'<div class="row" style="margin-top:12px"><button class="fin" data-a="esalvar">Salvar alterações</button><button data-a="ecancelar">Cancelar</button></div>';
@@ -149,7 +149,7 @@ function relatorio(){
     if(a=pes(o.conferiu)){a.ped[o.id]=1;a.conf++;if(err)a.econf++}
     if(a=pes(o.embalou)){a.ped[o.id]=1;a.emb++;if(err)a.eemb++}
     if(a=pes(o.conferiuEntrega)){a.ped[o.id]=1;a.ent++}
-    if(['aguardando','conferencia','correcao','finalizado'].indexOf(o.status)>=0&&(a=pes(RESP_NF))){a.ped[o.id]=1;a.nf++}
+    if(['aguardando','conferencia','correcao','finalizado'].indexOf(o.status)>=0&&(a=pes(o.nfPor||RESP_NF))){a.ped[o.id]=1;a.nf++}
   });
   var rows=Object.values(P).sort(function(a,b){return (Object.keys(b.ped).length-Object.keys(a.ped).length)||((b.sep+b.conf+b.emb+b.nf+b.ent)-(a.sep+a.conf+a.emb+a.nf+a.ent))});
   var h=sel+'<div class="card"><b>'+all.length+'</b> pedidos '+(mk==='todos'?'no total':'em '+mesNome(mk))+' · <span class="bad"><b>'+comErro+'</b> com correção</span></div>';
@@ -228,7 +228,7 @@ document.addEventListener('click',function(e){
     if(!em){toast('Informe quem embalou');return}
     save(id,{volumes:vol,conferiu:cf,embalou:em,status:'nf'});toast('Enviado para Aguardando NF');
   }
-  else if(a==='finnf'&&o){var nfn=c.querySelector('.nfn').value.trim();if(!nfn){toast('Digite o número da NF');return}save(id,{nfNumero:nfn,status:'aguardando'});toast('Enviado para Aguardando Entrega')}
+  else if(a==='finnf'&&o){var nfn=c.querySelector('.nfn').value.trim(),nfp=nameVal(c,'nfp');if(!nfn){toast('Digite o número da NF');return}if(!nfp){toast('Informe quem emitiu a NF');return}save(id,{nfNumero:nfn,nfPor:nfp,status:'aguardando'});toast('Enviado para Aguardando Entrega')}
   else if(a==='entregue'&&o){
     save(id,{status:'conferencia'});toast('🎉 Recebimento confirmado! Agora confira o pedido.');
   }
@@ -254,7 +254,7 @@ document.addEventListener('click',function(e){
   else if(a==='esalvar'&&o){
     var g=function(k){var el=c.querySelector('.e_'+k);return el?el.value.trim():''};
     var pe={numero:g('numero'),filial:g('filial'),status:g('status'),correcao:g('correcao')==='1',obs:g('obs')};
-    ['separador','volumes','conferiu','embalou','nfNumero','volRecebidos','conferiuEntrega'].forEach(function(k){pe[k]=g(k)});
+    ['separador','volumes','conferiu','embalou','nfNumero','nfPor','volRecebidos','conferiuEntrega'].forEach(function(k){pe[k]=g(k)});
     if(!pe.numero){toast('Informe o número do pedido');return}
     if(pe.status==='finalizado'&&!o.finalizadoEm)pe.finalizadoEm=Date.now();
     editing=null;save(id,pe);toast('Pedido atualizado');
