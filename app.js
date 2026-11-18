@@ -148,18 +148,17 @@ function relatorio(){
     if(a=pes(o.separador)){a.ped[o.id]=1;if(o.status!=='separacao'){a.sep++;if(err)a.esep++}}
     if(a=pes(o.conferiu)){a.ped[o.id]=1;a.conf++;if(err)a.econf++}
     if(a=pes(o.embalou)){a.ped[o.id]=1;a.emb++;if(err)a.eemb++}
-    if(a=pes(o.conferiuEntrega)){a.ped[o.id]=1;a.ent++}
     if(['aguardando','conferencia','correcao','finalizado'].indexOf(o.status)>=0&&(a=pes(o.nfPor||RESP_NF))){a.ped[o.id]=1;a.nf++}
   });
-  var rows=Object.values(P).sort(function(a,b){return (Object.keys(b.ped).length-Object.keys(a.ped).length)||((b.sep+b.conf+b.emb+b.nf+b.ent)-(a.sep+a.conf+a.emb+a.nf+a.ent))});
+  var rows=Object.values(P).sort(function(a,b){return (Object.keys(b.ped).length-Object.keys(a.ped).length)||((b.sep+b.conf+b.emb+b.nf)-(a.sep+a.conf+a.emb+a.nf))});
   var h=sel+'<div class="card"><b>'+all.length+'</b> pedidos '+(mk==='todos'?'no total':'em '+mesNome(mk))+' · <span class="bad"><b>'+comErro+'</b> com correção</span></div>';
   var tt=all.filter(function(o){return o.status==='finalizado'&&o.criado&&o.finalizadoEm}).map(function(o){return o.finalizadoEm-o.criado});
   if(tt.length){var mm=function(ms){return dur({criado:0,finalizadoEm:ms})};h+='<div class="card">⏱ Tempo do pedido (cadastro → finalizado), em <b>'+tt.length+'</b> pedidos finalizados: média <b>'+mm(tt.reduce(function(a,b){return a+b},0)/tt.length)+'</b> · mais rápido <b>'+mm(Math.min.apply(null,tt))+'</b> · mais demorado <b>'+mm(Math.max.apply(null,tt))+'</b></div>'}
   if(!rows.length)return h+'<div class="empty">Ainda não há atividades registradas.</div>';
-  h+='<div class="card" style="overflow-x:auto"><table><thead><tr><th>Pessoa</th><th>Separações</th><th>Conferências</th><th>Embalagens</th><th>NF</th><th>Conf. de entrega</th><th>Total de participação</th><th>Total de erros</th><th>% de acerto</th><th>Pedidos em que atuou</th><th>% de participação</th></tr></thead><tbody>';
+  h+='<div class="card" style="overflow-x:auto"><table><thead><tr><th>Pessoa</th><th>Separações</th><th>Conferências</th><th>Embalagens</th><th>NF</th><th>Total de participação</th><th>Total de erros</th><th>% de acerto</th><th>Pedidos em que atuou</th><th>% de participação</th></tr></thead><tbody>';
   rows.forEach(function(p){var te=p.esep+p.econf+p.eemb,tf=p.sep+p.conf+p.emb,pc=tf?(((tf-te)/tf)*100).toFixed(1).replace('.',',')+'%':'—',np=Object.keys(p.ped).length,pp=(np/all.length*100).toFixed(1).replace('.',',')+'%';
-    h+='<tr><td><b>'+esc(p.nome)+'</b></td>'+cel(p.sep,p.esep)+cel(p.conf,p.econf)+cel(p.emb,p.eemb)+'<td><b>'+p.nf+'</b></td><td><b>'+p.ent+'</b></td><td><b>'+(p.sep+p.conf+p.emb+p.nf+p.ent)+'</b></td><td class="'+(te?'bad':'mut')+'"><b>'+te+'</b></td><td><b>'+pc+'</b></td><td><b>'+np+'</b> de '+all.length+'</td><td><b>'+pp+'</b></td></tr>'});
-  return h+'</tbody></table></div><div class="mut">Erro = pedido que precisou de correção na conferência de entrega, contado para o separador, o conferente e o embalador daquele pedido. % de acerto = (separações + conferências + embalagens − erros) ÷ (separações + conferências + embalagens). % de participação = pedidos em que a pessoa aparece (separou, conferiu, embalou, NF ou conferiu a entrega) ÷ total de pedidos do período; cada pedido conta uma vez por pessoa, mesmo que ela tenha feito mais de uma função nele. Cada pedido conta no mês em que foi cadastrado.</div>';
+    h+='<tr><td><b>'+esc(p.nome)+'</b></td>'+cel(p.sep,p.esep)+cel(p.conf,p.econf)+cel(p.emb,p.eemb)+'<td><b>'+p.nf+'</b></td><td><b>'+(p.sep+p.conf+p.emb+p.nf)+'</b></td><td class="'+(te?'bad':'mut')+'"><b>'+te+'</b></td><td><b>'+pc+'</b></td><td><b>'+np+'</b> de '+all.length+'</td><td><b>'+pp+'</b></td></tr>'});
+  return h+'</tbody></table></div><div class="mut">Erro = pedido que precisou de correção na conferência de entrega, contado para o separador, o conferente e o embalador daquele pedido. % de acerto = (separações + conferências + embalagens − erros) ÷ (separações + conferências + embalagens). % de participação = pedidos em que a pessoa aparece (separou, conferiu, embalou ou NF) ÷ total de pedidos do período; cada pedido conta uma vez por pessoa, mesmo que ela tenha feito mais de uma função nele. Cada pedido conta no mês em que foi cadastrado.</div>';
 }
 
 /* ============ SAUDAÇÃO E DESENHO DA TELA ============ */
