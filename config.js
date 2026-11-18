@@ -43,6 +43,8 @@ export const SAUDACAO={admin:'Igor',hebert:'Hebert',separador:'equipe de Separa�
 
 /* Pessoa a quem a etapa "NF" é atribuída no relatório */
 export const RESP_NF='Igor';
+/* Pessoas que podem emitir NF (a primeira já aparece escolhida na tela) */
+export const EMISSORES_NF=['Igor','Hebert'];
 
 /* ---------- 3. Listas de nomes (use ordem alfabética) ---------- */
 export const SEPS=['Abel','Auricelia','Caio','Italu','Junior','Pedro','Tarciano','Wesley'];
