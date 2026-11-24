@@ -7,11 +7,17 @@
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {getFirestore,collection,query,where,onSnapshot,doc,setDoc,deleteDoc} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import {firebaseConfig,DOMINIO as DOM,PAPEIS,USUARIOS_FILIAL as MAP,FILIAIS,ROTULO_PAPEL,SAUDACAO,RESP_NF,EMISSORES_NF,SEPS,EQUIPE,ST,BTN,NOMES,ETAPAS,COR,LIMITE} from "./config.js?v=2";
+import {firebaseConfig,DOMINIO as DOM,PAPEIS,USUARIOS_FILIAL as MAP,FILIAIS,ROTULO_PAPEL,SAUDACAO,RESP_NF,SEPS,EQUIPE,ST,BTN,NOMES,ETAPAS,COR,LIMITE} from "./config.js?v=1";
+
+import * as CFG from "./config.js?v=1";
+var EMISSORES_NF=CFG.EMISSORES_NF||['Igor','Hebert'];
+var SOL_ST=CFG.SOL_ST||{aberta:['Aberta','#d97706'],atendida:['Atendida','#16a34a'],negada:['Negada','#dc2626']};
+NOMES.solicitacoes=NOMES.solicitacoes||'Solicitações';COR.solicitacoes=COR.solicitacoes||'#9333ea';
 
 /* ============ ESTADO DA TELA ============ */
 var orders={},tab='novo',filtro='todas',pending=false,mesSel=null,confirmDel=null,editing=null,sinal='+',tipo='NF',draft={num:'',filial:FILIAIS[0],st:'separacao',sep:'',sepo:'',foco:false};
 var busca='',recentes=[];
+var solic={},solSep=null,solDel=null;
 var PRIO={conferencia:0,aguardando:1,nf:2,conferido:3,separacao:4,correcao:5};
 
 /* ============ TEMPOS E AVISOS ============ */
@@ -24,15 +30,17 @@ function dur(o){if(!o.criado||!o.finalizadoEm)return '';var m=Math.round((o.fina
 function naAba(o,k){return k==='andamento'?o.status!=='finalizado':o.status===k}
 function minhaAcao(o){return isFilial()&&(o.status==='aguardando'||o.status==='conferencia')}
 function aviso(o){if(!minhaAcao(o))return '';var t=o.status==='aguardando'?['📦','Seu pedido chegou?','Toque em “Recebi o pedido” quando ele chegar.']:['🔍','Hora de conferir!','Veja se está tudo certo e finalize a conferência.'];return '<div class="avisoacao"><span class="ic">'+t[0]+'</span><div>'+t[1]+'<small>'+t[2]+'</small></div></div>'}
+function urgente(o){return !!o.urgente&&o.status!=='finalizado'}
+function avisoUrg(o){return urgente(o)?'<div class="avisourg"><span class="ic">🚨</span><div>PEDIDO URGENTE<small>Solicitação atendida: priorize este pedido até a finalização.</small></div></div>':''}
 function progresso(o){var i=o.status==='correcao'?4:ETAPAS.indexOf(o.status);return '<div class="prog">'+ETAPAS.map(function(k,n){return '<span style="background:'+(n<=i?COR[o.status]:'var(--bd)')+'"></span>'}).join('')+'</div>'}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function toast(m){var t=document.getElementById('toast');t.textContent=m;t.className='s';setTimeout(function(){t.className=''},2400)}
 function fmt(t){return t?new Date(t).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):''}
 function fmtQ(q){q=+q;return '<span class="'+(q<0?'bad':'okc')+'">'+(q<0?'−':'+')+Math.abs(q)+' un.</span>'}
 function btns(){return isSeparador()?BTN.slice(0,4):BTN}
-function tabs(){if(isEntregador())return['aguardando'];if(isFilial())return['andamento','finalizado'];if(isSeparador())return['separacao','conferido','nf','aguardando'];var t=['separacao','conferido','nf','aguardando','conferencia'];if(isAdmin())t.push('correcao');t.push('finalizado');if(isAdmin())t.push('relatorio');return t}
-function list(st){return Object.values(orders).filter(function(o){return naAba(o,st)&&(filtro==='todas'||o.filial===filtro)}).sort(function(a,b){return (st==='andamento'?(PRIO[a.status]-PRIO[b.status]):0)||((b.atualizado||0)-(a.atualizado||0))})}
-function count(st){return Object.values(orders).filter(function(o){return naAba(o,st)}).length}
+function tabs(){if(isEntregador())return['aguardando'];if(isFilial())return['andamento','solicitacoes','finalizado'];if(isSeparador())return['separacao','conferido','nf','aguardando'];var t=['solicitacoes','separacao','conferido','nf','aguardando','conferencia'];if(isAdmin())t.push('correcao');t.push('finalizado');if(isAdmin())t.push('relatorio');return t}
+function list(st){return Object.values(orders).filter(function(o){return naAba(o,st)&&(filtro==='todas'||o.filial===filtro)}).sort(function(a,b){return ((urgente(b)?1:0)-(urgente(a)?1:0))||(st==='andamento'?(PRIO[a.status]-PRIO[b.status]):0)||((b.atualizado||0)-(a.atualizado||0))})}
+function count(st){if(st==='solicitacoes')return Object.values(solic).filter(function(x){return x.status==='aberta'}).length;return Object.values(orders).filter(function(o){return naAba(o,st)}).length}
 
 /* ============ GRAVAR NO BANCO ============ */
 function save(id,patch){
@@ -90,20 +98,50 @@ function editForm(o){
    '<div style="flex:1;min-width:170px"><label>Status</label><select class="e_status">'+Object.keys(ST).map(function(k){return opt(k,o.status,ST[k])}).join('')+'</select></div></div>';
   [['separador','Separador'],['volumes','Volumes'],['conferiu','Conferido por'],['embalou','Embalado por'],['nfNumero','Número da NF'],['nfPor','NF emitida por'],['volRecebidos','Volumes recebidos'],['conferiuEntrega','Conferência de entrega por']].forEach(function(x){h+='<label>'+x[1]+'</label><input class="e_'+x[0]+'" value="'+esc(o[x[0]])+'">'});
   h+='<label>Precisa de correção?</label><select class="e_correcao">'+opt('0',o.correcao?'1':'0','Não')+opt('1',o.correcao?'1':'0','Sim')+'</select>';
+  h+='<label>Pedido urgente?</label><select class="e_urgente">'+opt('0',o.urgente?'1':'0','Não')+opt('1',o.urgente?'1':'0','Sim')+'</select>';
   h+=itensHtml(o,true)+'<label>Observação</label><textarea class="e_obs" rows="3">'+esc(o.obs||'')+'</textarea>';
   return h+'<div class="row" style="margin-top:12px"><button class="fin" data-a="esalvar">Salvar alterações</button><button data-a="ecancelar">Cancelar</button></div>';
 }
 function card(o){
   var ed=isAdmin()&&editing===o.id;
   var cor=COR[o.status]||'var(--bd)',at=atraso(o);
-  var h='<div class="card'+(minhaAcao(o)?' acao':'')+'" data-id="'+esc(o.id)+'" style="--wc:'+cor+';border-left:5px solid '+cor+'">'+aviso(o)+'<div class="top"><div><span class="num">Pedido '+esc(o.numero)+'</span><span class="tag">'+esc(o.filial)+'</span><div class="mut">'+(o.status==='finalizado'?'✔ Finalizado '+fmt(o.finalizadoEm)+(dur(o)?' · ⏱ Tempo total: <b>'+dur(o)+'</b>':''):'Atualizado '+fmt(o.atualizado)+(at?' · <span style="color:var('+(at===2?'--bad':'--warn')+');font-weight:600">⏱ '+idade(o)+' nesta etapa</span>':' · '+idade(o)))+'</div></div><span class="pill" style="background:'+cor+'">'+esc(ST[o.status]||o.status)+'</span></div>'+progresso(o);
+  var h='<div class="card'+(minhaAcao(o)?' acao':'')+(urgente(o)?' urg':'')+'" data-id="'+esc(o.id)+'" style="--wc:'+cor+';border-left:5px solid '+cor+'">'+avisoUrg(o)+aviso(o)+'<div class="top"><div><span class="num">Pedido '+esc(o.numero)+'</span><span class="tag">'+esc(o.filial)+'</span><div class="mut">'+(o.status==='finalizado'?'✔ Finalizado '+fmt(o.finalizadoEm)+(dur(o)?' · ⏱ Tempo total: <b>'+dur(o)+'</b>':''):'Atualizado '+fmt(o.atualizado)+(at?' · <span style="color:var('+(at===2?'--bad':'--warn')+');font-weight:600">⏱ '+idade(o)+' nesta etapa</span>':' · '+idade(o)))+'</div></div><span class="pill" style="background:'+cor+'">'+esc(ST[o.status]||o.status)+'</span></div>'+progresso(o);
   if(ed)return h+editForm(o)+'</div>';
   h+=infoLine(o);
+  if(o.solicitacaoTexto)h+='<div style="margin:6px 0"><span class="mut">📨 Solicitação:</span> '+esc(o.solicitacaoTexto)+'</div>';
   if(o.status==='finalizado'||o.status==='correcao'){h+=(o.correcao?'<div class="bad">Houve correção:</div>':'<div class="mut">Sem correções.</div>')+itensHtml(o,false)+(o.obs?'<div style="margin:6px 0"><span class="mut">Observação:</span> '+esc(o.obs)+'</div>':'')}
   var a=actions(o);
   h+=a||(o.status==='finalizado'?'':'<div class="mut" style="margin-top:8px">Somente consulta nesta etapa.</div>');
   if(isAdmin())h+='<div class="row" style="margin-top:12px"><button data-a="editar">Editar pedido</button>'+(confirmDel===o.id?'<span class="bad">Excluir este pedido?</span><button class="dangerx" data-a="excluir-sim">Sim, excluir</button><button data-a="excluir-nao">Cancelar</button>':'<button class="danger" data-a="excluir">Excluir pedido</button>')+'</div>';
   return h+'</div>';
+}
+
+/* ============ SOLICITAÇÕES ============ */
+function salvaSol(id,patch){var s=Object.assign({},solic[id],patch);solic[id]=s;render();var d=Object.assign({},s);delete d.id;setDoc(doc(fdb,'solicitacoes',id),d).catch(function(){toast('Sem permissão para salvar a solicitação')})}
+function solCard(s){
+  var st=SOL_ST[s.status]||[s.status,'#6b7280'],ad=isAdmin();
+  var h='<div class="card" data-sid="'+esc(s.id)+'" style="border-left:5px solid '+st[1]+'"><div class="top"><div><span class="num">Solicitação</span>'+(ad?'<span class="tag">'+esc(s.filial)+'</span>':'')+'<div class="mut">Enviada '+fmt(s.criadoEm)+(s.criadoPor?' por '+esc(s.criadoPor):'')+'</div></div><span class="pill" style="background:'+st[1]+'">'+esc(st[0])+'</span></div>';
+  h+='<div style="white-space:pre-wrap;margin:6px 0">'+esc(s.texto)+'</div>';
+  if(s.resposta)h+='<div class="mut" style="margin-top:6px">💬 Resposta: <b>'+esc(s.resposta)+'</b></div>';
+  if(s.respondidoEm)h+='<div class="mut">'+(s.status==='negada'?'Negada':'Atendida')+' em '+fmt(s.respondidoEm)+(s.respondidoPor?' por '+esc(s.respondidoPor):'')+'</div>';
+  if(s.pedidoNumero)h+='<div class="okc" style="margin-top:6px;font-weight:600">🚨 Enviada para a separação como pedido urgente nº '+esc(s.pedidoNumero)+'</div>';
+  if(ad){
+    if(s.status==='aberta')h+='<label>Resposta (opcional)</label><textarea class="sresp" rows="2" maxlength="300" placeholder="Escreva um retorno para a loja"></textarea><div class="row" style="margin-top:10px"><button class="fin" data-a="sol-atendida">✅ Atendida</button><button class="danger" data-a="sol-negada">❌ Negada</button></div>';
+    else if(s.status==='atendida'&&!s.pedidoId){
+      if(solSep===s.id)h+='<div style="max-width:260px"><label>Nº do pedido</label><input class="snum" inputmode="numeric" placeholder="Ex.: 12345">'+nameSel('ssep',SEPS,'Separador:')+'</div><div class="row" style="margin-top:10px"><button class="fin" data-a="sol-sep-ok">🚨 Enviar para separação (urgente)</button><button data-a="sol-sep-cancel">Cancelar</button></div>';
+      else h+='<div style="margin-top:10px"><button class="fin" data-a="sol-sep">🚚 Enviar para separação (urgente)</button></div>';
+    }
+    h+='<div class="row" style="margin-top:10px">'+(solDel===s.id?'<span class="bad">Excluir esta solicitação?</span><button class="dangerx" data-a="sol-del-sim">Sim, excluir</button><button data-a="sol-del-nao">Cancelar</button>':'<button class="danger" data-a="sol-del">Excluir</button>')+'</div>';
+  }
+  return h+'</div>';
+}
+function solicitacoesHtml(){
+  var l=Object.values(solic).sort(function(a,b){return (b.criadoEm||0)-(a.criadoEm||0)});
+  if(isAdmin()){
+    var ab=l.filter(function(x){return x.status==='aberta'}),re=l.filter(function(x){return x.status!=='aberta'});
+    return '<div class="sec">🔔 Abertas ('+ab.length+')</div>'+(ab.length?ab.map(solCard).join(''):'<div class="card">🎉 Nenhuma solicitação aberta.</div>')+(re.length?'<div class="sec">Respondidas ('+re.length+')</div>'+re.map(solCard).join(''):'');
+  }
+  return '<div class="card"><b>📨 Nova solicitação</b><label>O que você precisa?</label><textarea class="stx" rows="3" maxlength="500" placeholder="Descreva a sua solicitação"></textarea><div style="margin-top:10px"><button class="fin" data-a="sol-enviar">Enviar solicitação</button></div></div>'+(l.length?'<div class="sec">Suas solicitações</div>'+l.map(solCard).join(''):'<div class="empty">Você ainda não fez nenhuma solicitação.</div>');
 }
 
 /* ============ RELATÓRIO E PDF ============ */
@@ -176,8 +214,8 @@ function render(){atualizaSaudacao();
   if(tab==='novo'&&(isFilial()||isEntregador()))tab=tl[0];
   if(tab!=='novo'&&tl.indexOf(tab)<0)tab=tl[0];
   var nav=(isFilial()||isEntregador())?'':'<button data-a="tab" data-v="novo" class="'+(tab==='novo'?'on':'')+'">+ Novo pedido</button>';
-  tl.forEach(function(k){var cr=COR[k],on=tab===k&&!busca,late=Object.values(orders).filter(function(o){return naAba(o,k)&&atraso(o)===2}).length,acn=isFilial()&&k==='andamento'?Object.values(orders).filter(minhaAcao).length:0;
-    nav+='<button data-a="tab" data-v="'+k+'" class="'+(on?'on':'')+'"'+(on&&cr?' style="background:'+cr+';border-color:'+cr+';color:#fff"':'')+'>'+(k==='relatorio'?'Relatório':'<i class="dot" style="background:'+cr+'"></i>'+(ST[k]||NOMES[k])+'<span class="badge'+(late?' late':'')+'">'+count(k)+'</span>'+(acn?'<span class="badge acaoB">'+acn+' p/ você</span>':''))+'</button>'});
+  tl.forEach(function(k){var cr=COR[k],on=tab===k&&!busca,late=Object.values(orders).filter(function(o){return naAba(o,k)&&atraso(o)===2}).length,acn=isFilial()&&k==='andamento'?Object.values(orders).filter(minhaAcao).length:0,urg=Object.values(orders).filter(function(o){return naAba(o,k)&&o.urgente&&o.status!=='finalizado'}).length;
+    nav+='<button data-a="tab" data-v="'+k+'" class="'+(on?'on':'')+'"'+(on&&cr?' style="background:'+cr+';border-color:'+cr+';color:#fff"':'')+'>'+(k==='relatorio'?'Relatório':'<i class="dot" style="background:'+cr+'"></i>'+(ST[k]||NOMES[k])+'<span class="badge'+(late?' late':'')+(urg?' urgB':'')+(k==='solicitacoes'&&isAdmin()&&count(k)?' acaoB':'')+'">'+count(k)+'</span>'+(acn?'<span class="badge acaoB">'+acn+' p/ você</span>':''))+'</button>'});
   document.getElementById('nav').innerHTML=nav;
   var m=document.getElementById('main');
   if(busca){var qq=busca.toLowerCase(),rs=Object.values(orders).filter(function(o){return (String(o.numero)+' '+String(o.nfNumero||'')).toLowerCase().indexOf(qq)>=0}).sort(function(a,b){return (b.atualizado||0)-(a.atualizado||0)});m.innerHTML='<div class="mut" style="margin-bottom:8px">Resultados da busca em todas as etapas: '+rs.length+'</div>'+(rs.length?rs.map(card).join(''):'<div class="empty">Nenhum pedido encontrado.</div>');return}
@@ -191,6 +229,7 @@ function render(){atualizaSaudacao();
     if(draft.foco){draft.foco=false;var ni=m.querySelector('#num');if(ni)ni.focus()}
     return;
   }
+  if(tab==='solicitacoes'){m.innerHTML=solicitacoesHtml();return}
   if(tab==='relatorio'){m.innerHTML=relatorio();return}
   var f=!seeAll()?'':'<div class="filter row"><span class="mut">Filial:</span>'+['todas'].concat(FILIAIS).map(function(x){return '<button data-a="filtro" data-v="'+esc(x)+'" class="'+(filtro===x?'on':'')+'">'+(x==='todas'?'Todas':esc(x))+'</button>'}).join('')+'</div>';
   var l=list(tab),rs0='';
@@ -204,7 +243,7 @@ document.addEventListener('change',function(e){var s=e.target;if(s.classList&&s.
 document.addEventListener('click',function(e){
   var b=e.target.closest('[data-a]');if(!b)return;
   var a=b.dataset.a,v=b.dataset.v,c=b.closest('.card'),id=c&&c.dataset.id,o=id&&orders[id];
-  if(a==='tab'){document.body.classList.remove('menu');tab=v;confirmDel=null;editing=null;mesSel=null;if(v==='novo')draft.foco=true;if(busca){busca='';document.getElementById('busca').value=''}render()}
+  if(a==='tab'){document.body.classList.remove('menu');tab=v;confirmDel=null;editing=null;solSep=null;solDel=null;mesSel=null;if(v==='novo')draft.foco=true;if(busca){busca='';document.getElementById('busca').value=''}render()}
   else if(a==='pdf'){baixarPdf()}
   else if(a==='filtro'){filtro=v;render()}
   else if(a==='dfilial'||a==='dst'){saveDraft(c);if(a==='dfilial')draft.filial=v;else draft.st=v;render()}
@@ -219,6 +258,34 @@ document.addEventListener('click',function(e){
     save('p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),ord);
     toast('Pedido '+n+' cadastrado em '+ST[dest]);
   }
+  else if(a==='sol-enviar'){
+    var tx=c.querySelector('.stx').value.trim();if(!tx){toast('Escreva a sua solicitação');return}
+    var sid0='s'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),so0={filial:me.filial,texto:tx,status:'aberta',criadoEm:Date.now(),criadoPor:me.user};
+    solic[sid0]=Object.assign({id:sid0},so0);render();
+    setDoc(doc(fdb,'solicitacoes',sid0),so0).catch(function(){toast('Não foi possível enviar a solicitação')});
+    toast('📨 Solicitação enviada!');
+  }
+  else if(a==='sol-atendida'||a==='sol-negada'){
+    var s1=solic[c.dataset.sid];if(!s1)return;
+    salvaSol(s1.id,{status:a==='sol-atendida'?'atendida':'negada',resposta:c.querySelector('.sresp').value.trim(),respondidoEm:Date.now(),respondidoPor:me.user});
+    toast(a==='sol-atendida'?'Solicitação atendida':'Solicitação negada');
+  }
+  else if(a==='sol-sep'){solSep=c.dataset.sid;render()}
+  else if(a==='sol-sep-cancel'){solSep=null;render()}
+  else if(a==='sol-sep-ok'){
+    var s2=solic[c.dataset.sid];if(!s2)return;
+    var num2=c.querySelector('.snum').value.trim(),sp2=nameVal(c,'ssep');
+    if(!num2){toast('Informe o número do pedido');return}
+    if(!sp2){toast('Informe o separador');return}
+    if(Object.values(orders).some(function(x){return x.numero===num2&&x.filial===s2.filial})){toast('Este pedido já existe nesta filial');return}
+    var pid='p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+    save(pid,{numero:num2,filial:s2.filial,status:'separacao',correcao:false,itens:[],criado:Date.now(),separador:sp2,urgente:true,solicitacaoId:s2.id,solicitacaoTexto:s2.texto});
+    solSep=null;salvaSol(s2.id,{pedidoId:pid,pedidoNumero:num2,enviadaSepEm:Date.now()});
+    toast('🚨 Enviado para a separação como urgente');
+  }
+  else if(a==='sol-del'){solDel=c.dataset.sid;render()}
+  else if(a==='sol-del-nao'){solDel=null;render()}
+  else if(a==='sol-del-sim'){var sd=c.dataset.sid;delete solic[sd];solDel=null;render();deleteDoc(doc(fdb,'solicitacoes',sd)).catch(function(){toast('Sem permissão para excluir')});toast('Solicitação excluída')}
   else if(a==='finsep'&&o){save(id,{status:'conferido'});toast('Enviado para Aguardando Conferência')}
   else if(a==='finconf'&&o){
     var vol=c.querySelector('.vol').value.trim(),cf=nameVal(c,'cf'),em=nameVal(c,'em');
@@ -252,7 +319,7 @@ document.addEventListener('click',function(e){
   else if(a==='ecancelar'){editing=null;render()}
   else if(a==='esalvar'&&o){
     var g=function(k){var el=c.querySelector('.e_'+k);return el?el.value.trim():''};
-    var pe={numero:g('numero'),filial:g('filial'),status:g('status'),correcao:g('correcao')==='1',obs:g('obs')};
+    var pe={numero:g('numero'),filial:g('filial'),status:g('status'),correcao:g('correcao')==='1',urgente:g('urgente')==='1',obs:g('obs')};
     ['separador','volumes','conferiu','embalou','nfNumero','nfPor','volRecebidos','conferiuEntrega'].forEach(function(k){pe[k]=g(k)});
     if(!pe.numero){toast('Informe o número do pedido');return}
     if(pe.status==='finalizado'&&!o.finalizadoEm)pe.finalizadoEm=Date.now();
@@ -270,7 +337,7 @@ document.addEventListener('keydown',function(e){if(e.key==='Enter'&&e.target.id=
 
 /* ============ LOGIN E LEITURA DO BANCO ============ */
 var app=initializeApp(firebaseConfig),auth=getAuth(app),fdb=getFirestore(app);
-var me=null,unsub=null,badMsg='';
+var me=null,unsub=null,unsub2=null,badMsg='';
 function isAdmin(){return !!me&&me.role==='admin'}
 function isSeparador(){return !!me&&me.role==='separador'}
 function seeAll(){return isAdmin()||isSeparador()||isEntregador()}
@@ -293,6 +360,8 @@ document.getElementById('lform').addEventListener('submit',function(e){
 document.getElementById('out').addEventListener('click',function(){signOut(auth)});
 onAuthStateChanged(auth,function(user){
   if(unsub){unsub();unsub=null}
+  if(unsub2){unsub2();unsub2=null}
+  solic={};
   if(!user){showLogin(badMsg);badMsg='';return}
   var un=(user.email||'').split('@')[0].toLowerCase();
   var role=PAPEIS[un]||(MAP[un]?'filial':null);
@@ -309,4 +378,11 @@ onAuthStateChanged(auth,function(user){
     var n={};s.forEach(function(d){n[d.id]=d.data()});orders=n;
     if(document.activeElement&&document.activeElement.id!=='busca'&&document.activeElement.matches('input,select,textarea')){pending=true}else render();
   },function(){toast('Sem permissão para ler os pedidos')});
+  if(role==='admin'||role==='filial'){
+    var qs=role==='admin'?collection(fdb,'solicitacoes'):query(collection(fdb,'solicitacoes'),where('filial','==',me.filial));
+    unsub2=onSnapshot(qs,function(s){
+      var n={};s.forEach(function(d){n[d.id]=Object.assign({id:d.id},d.data())});solic=n;
+      if(document.activeElement&&document.activeElement.id!=='busca'&&document.activeElement.matches('input,select,textarea')){pending=true}else render();
+    },function(){toast('Sem permissão para ler as solicitações')});
+  }
 });
