@@ -132,3 +132,13 @@ body{background:radial-gradient(1100px 480px at 90% -10%,rgba(0,92,168,.12),tran
 .topbar .sair{background:transparent;color:#fff;border-color:rgba(255,255,255,.6)}
 .topbar .sair:hover{background:var(--sy);color:#00305c;border-color:var(--sy)}
 @media (max-width:600px){.topbar{padding:12px 14px}.topbar h1{font-size:16px}}
+/* ===== Pedido urgente ===== */
+@keyframes piscaurg{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.8);background:var(--card)}50%{box-shadow:0 0 0 12px rgba(220,38,38,0);background:color-mix(in srgb,#dc2626 16%,var(--card))}}
+@keyframes piscatexto{0%,100%{opacity:1}50%{opacity:.45}}
+.urg{border-color:#dc2626;animation:piscaurg 1s infinite}
+.avisourg{display:flex;gap:12px;align-items:center;background:#dc2626;color:#fff;border-radius:14px;padding:10px 12px;margin:-4px 0 12px;font-weight:800;letter-spacing:.4px;animation:piscatexto 1s infinite}
+.avisourg .ic{font-size:28px}
+.avisourg small{display:block;font-weight:400;letter-spacing:0}
+nav button .badge.urgB,#side nav .badge.urgB{background:#dc2626;color:#fff;animation:piscatexto 1s infinite}
+textarea.stx,textarea.sresp{width:100%}
+@media (prefers-reduced-motion:reduce){.urg,.avisourg,nav button .badge.urgB{animation:none}}
